@@ -4,6 +4,8 @@ extends Control
 # All UI is built programmatically so the .tscn stays trivially simple.
 # Three parallax star layers scroll right-to-left at different speeds.
 
+const PassiveSelectScene := preload("res://scenes/ui/passive_select.tscn")
+
 const STAR_SPEEDS: Array = [12.0, 28.0, 55.0]
 const STAR_COUNTS: Array = [120, 70, 35]
 const STAR_SPAN_W: float = 2560.0   # double viewport width for seamless wrap
@@ -289,28 +291,51 @@ func _on_settle_pressed() -> void:
 
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
-
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
-	_refresh_status()
 
-	_world_desc_label.text = \
-		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+	# Build choice pool: all passives not yet owned, shuffled, take up to 3.
+	var owned_ids: Array = []
+	for p in GameState.passives:
+		owned_ids.append(p["id"])
+	var available: Array = []
+	for p in GameState.PASSIVE_POOL:
+		if not owned_ids.has(p["id"]):
+			available.append(p.duplicate())
+	available.shuffle()
+	var choices: Array = available.slice(0, min(3, available.size()))
 
-	SaveLoad.save_game()
+	var selector: CanvasLayer = PassiveSelectScene.instantiate()
+	selector.setup(choices)
+	add_child(selector)
+
+	var wname: String = world.get("name", "")
+	var wdesc: String = world.get("description", "")
+	var vessel_name: String = world.get("vessel_name", "")
+	selector.passive_chosen.connect(func(passive: Dictionary) -> void:
+		var final_passive: Dictionary = passive.duplicate()
+		final_passive["source"] = wname
+		GameState.add_passive(final_passive)
+		_apply_passive_effect(final_passive)
+		_refresh_status()
+		_world_desc_label.text = \
+			"You have founded [b]" + vessel_name + "[/b].\n\n" \
+			+ wdesc \
+			+ "\n\n[color=#aaffaa]Passive gained: [b]" \
+			+ final_passive.get("name", "") + "[/b]\n" \
+			+ final_passive.get("desc", "") + "[/color]"
+		SaveLoad.save_game()
+	)
+
+
+func _apply_passive_effect(passive: Dictionary) -> void:
+	match passive.get("id", ""):
+		"founding_bonus":
+			GameState.max_fuel += 5
+			GameState.refuel(5)
+		"warmth_seeker":
+			if GameState.get_current_world_data().get("type", "") == "temperate":
+				GameState.refuel(3)
 
 
 func _on_world_changed(_new_world: String) -> void:

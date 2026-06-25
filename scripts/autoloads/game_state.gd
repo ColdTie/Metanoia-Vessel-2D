@@ -4,6 +4,60 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Full pool of earnable passives. PassiveSelect draws 3 random unchosen entries.
+const PASSIVE_POOL: Array = [
+	{
+		"id": "founding_bonus",
+		"name": "Founding Bonus",
+		"desc": "The act of founding grants clarity. +5 max fuel.",
+	},
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens on exploration.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks deeper dialogue options with all creatures.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal a hidden specimen on arrival.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+	{
+		"id": "wanderers_eye",
+		"name": "Wanderer's Eye",
+		"desc": "Each new world visited records a bonus specimen observation.",
+	},
+	{
+		"id": "bright_memory",
+		"name": "Bright Memory",
+		"desc": "Creature dialogue never ends early — you can always ask again.",
+	},
+	{
+		"id": "warmth_seeker",
+		"name": "Warmth Seeker",
+		"desc": "Arriving at a temperate world restores 3 fuel.",
+	},
+	{
+		"id": "silent_approach",
+		"name": "Silent Approach",
+		"desc": "Avoiding an encounter costs 1 less fuel.",
+	},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []

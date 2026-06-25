@@ -60,17 +60,22 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 defined — full pool for void unlock)
 
 | ID | Name | Effect |
 |----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
-| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
-| echo_listener | Echo Listener | Unlocks extra creature dialogue options |
+| founding_bonus | Founding Bonus | +5 max fuel (applied immediately on choose) |
+| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens on exploration |
+| echo_listener | Echo Listener | Unlocks deeper dialogue options with all creatures |
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
-| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
+| tide_reader | Tide Reader | Ocean worlds reveal a hidden specimen on arrival |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| wanderers_eye | Wanderer's Eye | Each new world visited records a bonus specimen observation |
+| bright_memory | Bright Memory | Creature dialogue never ends early — always ask again |
+| warmth_seeker | Warmth Seeker | Arriving at a temperate world restores 3 fuel (applied immediately if already there) |
+| silent_approach | Silent Approach | Avoiding an encounter costs 1 less fuel |
+
+All 10 are in `GameState.PASSIVE_POOL`. Settlement draws 3 random unchosen entries via the PassiveSelect modal (`scenes/ui/passive_select.tscn`).
 
 ---
 
@@ -138,5 +143,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
