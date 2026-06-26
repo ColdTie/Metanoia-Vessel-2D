@@ -12,6 +12,7 @@ func save_game() -> void:
 		"specimens": GameState.specimens,
 		"credits": GameState.credits,
 		"fuel": GameState.fuel,
+		"max_fuel": GameState.max_fuel,
 		"settled_worlds": _get_settled_worlds(),
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -40,6 +41,7 @@ func load_game() -> bool:
 	GameState.ship_decorations = data.get("ship_decorations", [])
 	GameState.specimens = data.get("specimens", [])
 	GameState.credits = data.get("credits", 0)
+	GameState.max_fuel = data.get("max_fuel", 100)
 	GameState.fuel = data.get("fuel", 100)
 	_restore_settled_worlds(data.get("settled_worlds", []))
 	return true

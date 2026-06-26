@@ -4,6 +4,8 @@ extends Control
 # All UI is built programmatically so the .tscn stays trivially simple.
 # Three parallax star layers scroll right-to-left at different speeds.
 
+const PASSIVE_SELECT_SCENE := preload("res://scenes/ui/passive_select.tscn")
+
 const STAR_SPEEDS: Array = [12.0, 28.0, 55.0]
 const STAR_COUNTS: Array = [120, 70, 35]
 const STAR_SPAN_W: float = 2560.0   # double viewport width for seamless wrap
@@ -22,6 +24,7 @@ var _depart_button: Button
 var _settle_button: Button
 
 var _selected_world_id: String = ""
+var _passive_select: Node = null
 
 
 func _ready() -> void:
@@ -290,27 +293,39 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
+
+	var choices := GameState.pick_passive_choices(world.get("type", "generic"))
+	_passive_select = PASSIVE_SELECT_SCENE.instantiate()
+	_passive_select.setup(choices)
+	_passive_select.passive_chosen.connect(_on_passive_chosen.bind(world))
+	add_child(_passive_select)
+
+
+func _on_passive_chosen(passive: Dictionary, world: Dictionary) -> void:
+	GameState.add_passive({
+		"id": passive["id"],
+		"name": passive["name"],
+		"desc": passive["desc"],
+		"source": world.get("name", ""),
+	})
+	if passive["id"] == "founding_bonus":
+		GameState.max_fuel += 5
+		GameState.refuel(5)
+
+	if _passive_select:
+		_passive_select.queue_free()
+		_passive_select = null
+
 	_refresh_status()
+	SaveLoad.save_game()
 
 	_world_desc_label.text = \
-		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
+		"You have founded [b]" + world.get("vessel_name", "") + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
-
-	SaveLoad.save_game()
+		+ "\n\n[color=#aaffaa]Passive gained: [b]" + passive["name"] \
+		+ "[/b] — " + passive["desc"] + "[/color]"
 
 
 func _on_world_changed(_new_world: String) -> void:

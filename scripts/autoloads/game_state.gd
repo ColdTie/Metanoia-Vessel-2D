@@ -4,6 +4,71 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Full passive roster — 10 total (5 world-type, 5 generic) enables void unlock.
+# type field biases pick_passive_choices() toward the settled world's biome.
+const PASSIVE_POOL = [
+	{
+		"id": "founding_bonus",
+		"name": "Founding Bonus",
+		"desc": "The act of founding sharpens your resolve. +5 max fuel.",
+		"type": "generic",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "You hear what creatures mean, not just what they say. Unlocks deeper dialogue options.",
+		"type": "generic",
+	},
+	{
+		"id": "vessel_bond",
+		"name": "Vessel Bond",
+		"desc": "Each founding deepens your connection. Vessels restore 10 more fuel when you visit.",
+		"type": "generic",
+	},
+	{
+		"id": "cartographer",
+		"name": "Cartographer's Eye",
+		"desc": "Distance loses its mystery. All world travel costs are reduced by 1 fuel.",
+		"type": "generic",
+	},
+	{
+		"id": "steady_reach",
+		"name": "Steady Reach",
+		"desc": "Experience steadies you. The first encounter on any world can always be avoided.",
+		"type": "generic",
+	},
+	{
+		"id": "ember_sight",
+		"name": "Ember Sight",
+		"desc": "Temperate warmth opens your senses. Gain 5 fuel on arrival at temperate worlds.",
+		"type": "temperate",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "The cold no longer costs you. Ice-world travel costs 1 less fuel.",
+		"type": "ice",
+	},
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds reveal their specimens more readily to you.",
+		"type": "jungle",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert silence teaches patience. Desert worlds never trigger forced combat.",
+		"type": "desert",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean rhythms guide your eye. Reveals hidden specimens on ocean worlds.",
+		"type": "ocean",
+	},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -143,3 +208,33 @@ func add_specimen(specimen_id: String, world_id: String) -> void:
 
 func refuel(amount: int) -> void:
 	fuel = min(fuel + amount, max_fuel)
+
+
+# Returns up to `count` passives the player doesn't own, biased toward world_type.
+func pick_passive_choices(world_type: String, count: int = 3) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p["id"])
+
+	var typed: Array = []
+	var other: Array = []
+	for p in PASSIVE_POOL:
+		if owned_ids.has(p["id"]):
+			continue
+		if p.get("type", "generic") == world_type:
+			typed.append(p)
+		else:
+			other.append(p)
+
+	other.shuffle()
+
+	var choices: Array = []
+	if not typed.is_empty():
+		choices.append(typed[0])
+	for p in other:
+		if choices.size() >= count:
+			break
+		choices.append(p)
+
+	choices.shuffle()
+	return choices

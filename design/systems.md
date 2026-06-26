@@ -46,7 +46,9 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**: choose 1 of 3 randomly drawn passives — ✅ implemented (choose-1-of-3 card overlay)
+  - Biased toward the settled world's biome passive; shuffled for variety
+  - Only passives not yet owned appear in the draw
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -60,17 +62,20 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 defined — all in GameState.PASSIVE_POOL)
 
-| ID | Name | Effect |
-|----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
-| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
-| echo_listener | Echo Listener | Unlocks extra creature dialogue options |
-| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
-| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
-| dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| ID | Name | Type | Effect |
+|----|------|------|--------|
+| founding_bonus | Founding Bonus | generic | +5 max fuel (effect live) |
+| echo_listener | Echo Listener | generic | Unlocks deeper creature dialogue (TODO) |
+| vessel_bond | Vessel Bond | generic | Vessels restore 10 more fuel (TODO) |
+| cartographer | Cartographer's Eye | generic | All travel costs -1 fuel (TODO) |
+| steady_reach | Steady Reach | generic | First encounter always avoidable (TODO) |
+| ember_sight | Ember Sight | temperate | +5 fuel on temperate arrival (TODO) |
+| frost_hardened | Frost Hardened | ice | Ice-world travel -1 fuel (TODO) |
+| root_knowledge | Root Knowledge | jungle | Extra specimens on jungle worlds (TODO) |
+| dust_walker | Dust Walker | desert | Desert worlds never force combat (TODO) |
+| tide_reader | Tide Reader | ocean | Reveals hidden ocean specimens (TODO) |
 
 ---
 
@@ -138,5 +143,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
