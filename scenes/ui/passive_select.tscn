@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://cpassive001"]
+
+[ext_resource type="Script" path="res://scripts/ui/passive_select.gd" id="1_passive"]
+
+[node name="PassiveSelectDialog" type="CanvasLayer"]
+script = ExtResource("1_passive")
