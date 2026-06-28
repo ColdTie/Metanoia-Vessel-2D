@@ -4,6 +4,60 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Full roster — 10 entries, one per passive slot. draw_passive_choices() samples from these.
+const PASSIVE_ROSTER: Array = [
+	{
+		"id": "founding_bonus",
+		"name": "Founding Bonus",
+		"desc": "The act of founding grants clarity. Your capacity for fuel expands. (+5 max fuel)",
+	},
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "You have learned to read what the jungle keeps hidden. Extra specimens appear on jungle worlds.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "The silence between words becomes navigable. New dialogue paths open with every creature you meet.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "The cold no longer slows you. Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "The ocean speaks in patterns. Hidden specimens surface automatically on ocean worlds.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "You move with the desert's patience. Desert worlds never force combat encounters.",
+	},
+	{
+		"id": "star_chart",
+		"name": "Star Chart",
+		"desc": "A comprehensive map of drift-paths and gravity wells. All travel costs reduced by 1 (minimum 1).",
+	},
+	{
+		"id": "traders_eye",
+		"name": "Trader's Eye",
+		"desc": "You see the value others miss. Selling specimens and data earns 20% more credits.",
+	},
+	{
+		"id": "still_mind",
+		"name": "Still Mind",
+		"desc": "No creature can truly surprise you. Any combat encounter can always be resolved through dialogue.",
+	},
+	{
+		"id": "deep_cartography",
+		"name": "Deep Cartography",
+		"desc": "Every world has a secret shape. Each world type reveals a hidden scan on your first visit.",
+	},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -143,3 +197,11 @@ func add_specimen(specimen_id: String, world_id: String) -> void:
 
 func refuel(amount: int) -> void:
 	fuel = min(fuel + amount, max_fuel)
+
+
+# Return up to `count` passives from PASSIVE_ROSTER that the player doesn't own yet.
+func draw_passive_choices(count: int = 3) -> Array:
+	var owned_ids: Array = passives.map(func(p: Dictionary) -> String: return p["id"])
+	var pool: Array = PASSIVE_ROSTER.filter(func(p: Dictionary) -> bool: return not owned_ids.has(p["id"]))
+	pool.shuffle()
+	return pool.slice(0, min(count, pool.size()))
