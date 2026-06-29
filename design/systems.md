@@ -60,17 +60,20 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 — void unlock threshold)
 
-| ID | Name | Effect |
-|----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
-| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
-| echo_listener | Echo Listener | Unlocks extra creature dialogue options |
-| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
-| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
-| dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| ID | Name | Effect | Status |
+|----|------|--------|--------|
+| founding_bonus | Founding Bonus | +5 max fuel (immediate) | ✅ wired |
+| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel (immediate) | ✅ wired |
+| stellar_cartography | Stellar Cartography | All travel costs 1 less fuel (immediate) | ✅ wired |
+| canopy_bond | Canopy Bond | +2 credits on arrival at temperate/jungle worlds | ✅ wired |
+| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens | 🔜 needs exploration |
+| echo_listener | Echo Listener | Unlocks extra creature dialogue options | 🔜 needs encounters |
+| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens | 🔜 needs exploration |
+| dust_walker | Dust Walker | Desert worlds never trigger forced encounters | 🔜 needs encounters |
+| vessel_blessing | Vessel Blessing | Settled worlds refuel 5 more on docking | 🔜 needs vessel docking |
+| deep_resonance | Deep Resonance | Doubles specimen find chance on ocean worlds | 🔜 needs exploration |
 
 ---
 
@@ -138,5 +141,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |

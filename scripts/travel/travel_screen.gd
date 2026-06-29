@@ -290,15 +290,19 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
+	var choices := GameState.draw_passive_choices(3)
+	var selector: Control = preload("res://scenes/ui/passive_select.tscn").instantiate()
+	add_child(selector)
+	selector.setup(choices)
+	selector.passive_chosen.connect(func(passive: Dictionary) -> void:
+		_on_passive_chosen(passive, world)
+	)
+
+
+func _on_passive_chosen(passive: Dictionary, world: Dictionary) -> void:
+	var stamped := passive.duplicate()
+	stamped["source"] = world["name"]
+	GameState.add_passive(stamped)
 
 	_settle_button.visible = false
 	_populate_destinations()
@@ -307,8 +311,8 @@ func _on_settle_pressed() -> void:
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n[color=#aaffaa][b]" + stamped["name"] + "[/b] — " \
+		+ stamped.get("desc", "") + "[/color]"
 
 	SaveLoad.save_game()
 

@@ -4,6 +4,72 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Full passive pool — draw from here at settlement. Effects noted per entry;
+# stat effects applied in _apply_passive_effect(); exploration effects activate
+# when world surface scenes land.
+const PASSIVE_POOL: Array = [
+	{
+		"id": "founding_bonus",
+		"name": "Founding Bonus",
+		"desc": "The act of founding grants clarity. [b]+5 max fuel.[/b]",
+		"source": "",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Cold passages no longer bite as deep. [b]Ice-world travel costs 1 less fuel.[/b]",
+		"source": "",
+	},
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "The jungle speaks to those who listen. Yields extra specimens on jungle worlds.",
+		"source": "",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Silences become sentences. Unlocks additional dialogue paths with creatures.",
+		"source": "",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "The currents reveal what the surface hides. Reveals hidden specimens on ocean worlds.",
+		"source": "",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "The desert taught patience. Desert worlds never trigger forced encounters.",
+		"source": "",
+	},
+	{
+		"id": "stellar_cartography",
+		"name": "Stellar Cartography",
+		"desc": "Every charted star is a shortcut waiting to be seen. [b]All travel costs 1 less fuel.[/b]",
+		"source": "",
+	},
+	{
+		"id": "vessel_blessing",
+		"name": "Vessel Blessing",
+		"desc": "Each Vessel you found amplifies the next. Settled worlds refuel 5 more on docking.",
+		"source": "",
+	},
+	{
+		"id": "canopy_bond",
+		"name": "Canopy Bond",
+		"desc": "Life recognises life. Arriving on temperate or jungle worlds grants [b]+2 credits.[/b]",
+		"source": "",
+	},
+	{
+		"id": "deep_resonance",
+		"name": "Deep Resonance",
+		"desc": "Water remembers everything. Doubles specimen find chance on ocean worlds.",
+		"source": "",
+	},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -103,19 +169,55 @@ func travel_to_world(world_id: String) -> bool:
 	if world.is_empty():
 		return false
 	var cost: int = world.get("distance", 0)
+	if _has_passive("stellar_cartography"):
+		cost = max(0, cost - 1)
+	if world.get("type") == "ice" and _has_passive("frost_hardened"):
+		cost = max(0, cost - 1)
 	if fuel < cost:
 		return false
 	fuel -= cost
+	# canopy_bond: +2 credits on arrival at temperate or jungle worlds
+	if _has_passive("canopy_bond") and world.get("type") in ["temperate", "jungle"]:
+		add_credits(2)
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
 
 
+func _has_passive(passive_id: String) -> bool:
+	for p in passives:
+		if p.get("id") == passive_id:
+			return true
+	return false
+
+
+func draw_passive_choices(n: int = 3) -> Array:
+	var owned_ids: Array = passives.map(func(p: Dictionary) -> String: return p.get("id", ""))
+	var pool: Array = PASSIVE_POOL.filter(
+		func(p: Dictionary) -> bool: return not owned_ids.has(p.get("id", ""))
+	)
+	pool.shuffle()
+	return pool.slice(0, min(n, pool.size()))
+
+
 func add_passive(passive: Dictionary) -> void:
 	passives.append(passive)
+	_apply_passive_effect(passive)
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
+
+
+func _apply_passive_effect(passive: Dictionary) -> void:
+	match passive.get("id", ""):
+		"founding_bonus":
+			max_fuel += 5
+			refuel(5)
+		# frost_hardened, stellar_cartography: applied dynamically in travel_to_world()
+		# canopy_bond: applied dynamically in travel_to_world()
+		# exploration-dependent passives activate when world surface scenes land
+		_:
+			pass
 
 
 func _trigger_void_check() -> void:
