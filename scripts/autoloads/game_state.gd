@@ -4,6 +4,71 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Full passive catalog — 10 entries, enough to reach the void.
+# world_types: [] means any world; otherwise biased toward those types in draws.
+const PASSIVE_CATALOG: Array = [
+	{
+		"id": "founding_bonus",
+		"name": "Founding Bonus",
+		"desc": "The act of founding grants clarity. +5 max fuel.",
+		"world_types": [],
+	},
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds stir the memory of deeper things. Specimens from jungle worlds count double.",
+		"world_types": ["jungle"],
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "You learn to hear what isn't said. Unlocks extra dialogue options in creature encounters.",
+		"world_types": ["desert"],
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Cold clarifies your needs. Ice-world travel costs 1 less fuel.",
+		"world_types": ["ice"],
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "The ocean teaches patience. Hidden specimens reveal themselves on ocean worlds.",
+		"world_types": ["ocean"],
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert silence teaches a different kind of courage. Desert worlds never trigger forced combat.",
+		"world_types": ["desert"],
+	},
+	{
+		"id": "amber_sails",
+		"name": "Amber Sails",
+		"desc": "Temperate warmth steadies the spirit. Arriving at any temperate world recovers +3 fuel.",
+		"world_types": ["temperate"],
+	},
+	{
+		"id": "deep_cartographer",
+		"name": "Deep Cartographer",
+		"desc": "Every settled world becomes a known harbor. Return trips to settled worlds cost 1 less fuel.",
+		"world_types": [],
+	},
+	{
+		"id": "specimen_eye",
+		"name": "Specimen Eye",
+		"desc": "You have learned to look for life where others miss it. Find one extra specimen per world visited.",
+		"world_types": [],
+	},
+	{
+		"id": "still_core",
+		"name": "Still Core",
+		"desc": "The Vessel hum settles something in you. Each new Vessel founding recovers +10 fuel.",
+		"world_types": [],
+	},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -98,24 +163,81 @@ func get_current_world_data() -> Dictionary:
 	return get_world_by_name(current_world)
 
 
+# Returns up to `count` passive options for a settling reward draw.
+# Biases toward passives matching world_type; fills from generic pool.
+# Excludes passives the player already owns.
+func draw_passive_options(world_type: String, count: int = 3) -> Array:
+	var owned_ids: Array = passives.map(func(p): return p["id"])
+	var available: Array = PASSIVE_CATALOG.filter(
+		func(p): return not owned_ids.has(p["id"])
+	)
+	var typed: Array = available.filter(
+		func(p): return p["world_types"].has(world_type)
+	)
+	var generic: Array = available.filter(
+		func(p): return p["world_types"].is_empty()
+	)
+	var other: Array = available.filter(func(p):
+		return not p["world_types"].is_empty() and not p["world_types"].has(world_type)
+	)
+	typed.shuffle()
+	generic.shuffle()
+	other.shuffle()
+	# Typed first, then generic fillers, then cross-type as last resort
+	var pool: Array = typed + generic + other
+	return pool.slice(0, count)
+
+
+func has_passive(passive_id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == passive_id:
+			return true
+	return false
+
+
 func travel_to_world(world_id: String) -> bool:
 	var world := get_world_by_id(world_id)
 	if world.is_empty():
 		return false
-	var cost: int = world.get("distance", 0)
+	var cost: int = _get_travel_cost(world)
 	if fuel < cost:
 		return false
 	fuel -= cost
 	current_world = world["name"]
+	_apply_arrival_effects(world)
 	world_changed.emit(current_world)
 	return true
 
 
+func _get_travel_cost(world: Dictionary) -> int:
+	var cost: int = world.get("distance", 0)
+	if world.get("type", "") == "ice" and has_passive("frost_hardened"):
+		cost = max(0, cost - 1)
+	if world.get("settled", false) and has_passive("deep_cartographer"):
+		cost = max(0, cost - 1)
+	return cost
+
+
+func _apply_arrival_effects(world: Dictionary) -> void:
+	if world.get("type", "") == "temperate" and has_passive("amber_sails"):
+		refuel(3)
+
+
 func add_passive(passive: Dictionary) -> void:
 	passives.append(passive)
+	_apply_passive_on_gain(passive)
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
+
+
+func _apply_passive_on_gain(passive: Dictionary) -> void:
+	match passive.get("id", ""):
+		"founding_bonus":
+			max_fuel += 5
+			refuel(5)
+		"still_core":
+			refuel(10)
 
 
 func _trigger_void_check() -> void:

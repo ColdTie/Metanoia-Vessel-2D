@@ -20,8 +20,11 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _passive_select: Control
 
 var _selected_world_id: String = ""
+# World being settled; held across the async passive-select modal
+var _settling_world_id: String = ""
 
 
 func _ready() -> void:
@@ -30,6 +33,7 @@ func _ready() -> void:
 	_build_star_root()
 	_build_ui()
 	_build_star_field()
+	_build_passive_select()
 	_refresh_status()
 	_populate_destinations()
 	GameState.world_changed.connect(_on_world_changed)
@@ -201,6 +205,13 @@ func _build_right_panel(parent: Control) -> void:
 	btn_row.add_child(_settle_button)
 
 
+func _build_passive_select() -> void:
+	_passive_select = preload("res://scenes/ui/passive_select.tscn").instantiate()
+	_passive_select.visible = false
+	_passive_select.passive_chosen.connect(_on_passive_chosen)
+	add_child(_passive_select)
+
+
 func _make_label(text: String) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
@@ -287,30 +298,43 @@ func _on_settle_pressed() -> void:
 	if world.get("settled", false):
 		return
 
+	# Hold the world id across the modal; disable button to prevent double-tap
+	_settling_world_id = _selected_world_id
+	_settle_button.disabled = true
+
+	var options := GameState.draw_passive_options(world.get("type", ""))
+	_passive_select.show_draw(options)
+
+
+func _on_passive_chosen(passive: Dictionary) -> void:
+	var world := GameState.get_world_by_id(_settling_world_id)
+	if world.is_empty():
+		return
+
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
 	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
+		"id":     passive.get("id", ""),
+		"name":   passive.get("name", ""),
+		"desc":   passive.get("desc", ""),
 		"source": world["name"],
 	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
 
 	_settle_button.visible = false
+	_settle_button.disabled = false
 	_populate_destinations()
 	_refresh_status()
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n[color=#aaffaa]Passive gained: [b]" \
+		+ passive.get("name", "") + "[/b]\n" \
+		+ passive.get("desc", "") + "[/color]"
 
 	SaveLoad.save_game()
+	_settling_world_id = ""
 
 
 func _on_world_changed(_new_world: String) -> void:

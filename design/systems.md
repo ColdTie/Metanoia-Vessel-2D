@@ -60,17 +60,23 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 defined — all in `GameState.PASSIVE_CATALOG`)
 
-| ID | Name | Effect |
-|----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
-| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
-| echo_listener | Echo Listener | Unlocks extra creature dialogue options |
-| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
-| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
-| dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| ID | Name | Effect | World Bias |
+|----|------|--------|------------|
+| founding_bonus | Founding Bonus | +5 max fuel (on gain) | any |
+| root_knowledge | Root Knowledge | Jungle-world specimens count double | jungle |
+| echo_listener | Echo Listener | Extra dialogue options in encounters | desert |
+| frost_hardened | Frost Hardened | Ice-world travel costs -1 fuel | ice |
+| tide_reader | Tide Reader | Hidden specimens surface on ocean worlds | ocean |
+| dust_walker | Dust Walker | Desert worlds never trigger forced combat | desert |
+| amber_sails | Amber Sails | Arrive at temperate worlds with +3 fuel | temperate |
+| deep_cartographer | Deep Cartographer | Return trips to settled worlds cost -1 fuel | any |
+| specimen_eye | Specimen Eye | +1 guaranteed specimen per world visit | any |
+| still_core | Still Core | +10 fuel on each new Vessel founding (on gain) | any |
+
+Active effects now wired: `founding_bonus`, `still_core` (on gain); `frost_hardened`, `deep_cartographer` (travel cost); `amber_sails` (arrival refuel).
+Future effects (encounter system needed): `root_knowledge`, `echo_listener`, `tide_reader`, `dust_walker`, `specimen_eye`.
 
 ---
 
@@ -138,5 +144,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://passivesel01"]
+
+[ext_resource type="Script" path="res://scripts/ui/passive_select.gd" id="1_psel"]
+
+[node name="PassiveSelect" type="Control"]
+script = ExtResource("1_psel")
