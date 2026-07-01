@@ -4,6 +4,57 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Passive roster available for the choose-1-of-3 settling reward.
+# founding_bonus is granted automatically on the player's first settlement
+# and is not part of this draw pool.
+const PASSIVE_ROSTER: Array = [
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+	{
+		"id": "warm_current",
+		"name": "Warm Current",
+		"desc": "Temperate worlds refuel an extra 2 fuel on arrival.",
+	},
+	{
+		"id": "steady_hands",
+		"name": "Steady Hands",
+		"desc": "Combat encounters never cost you a specimen.",
+	},
+	{
+		"id": "trade_instinct",
+		"name": "Trade Instinct",
+		"desc": "Selling specimens and info yields more credits.",
+	},
+	{
+		"id": "deep_current_charts",
+		"name": "Deep Current Charts",
+		"desc": "Reveals the shortest route to any settled world.",
+	},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -143,3 +194,15 @@ func add_specimen(specimen_id: String, world_id: String) -> void:
 
 func refuel(amount: int) -> void:
 	fuel = min(fuel + amount, max_fuel)
+
+
+func get_passive_choices(count: int = 3) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+	var pool: Array = []
+	for p in PASSIVE_ROSTER:
+		if not owned_ids.has(p["id"]):
+			pool.append(p)
+	pool.shuffle()
+	return pool.slice(0, min(count, pool.size()))
