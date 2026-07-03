@@ -40,6 +40,19 @@ Each world carries:
 - **specimens** — 2 collectible creature/plant types
 - **settled** flag + **vessel_name** (player-set or default "Vessel of X")
 
+### Exploration (World Surface)
+
+- "Explore Surface" button on the Travel Screen (visible when docked at a
+  world) opens `scenes/world/world_surface.tscn`
+- Player walks a bounded 2200×1400 patch with arrow keys; camera follows
+- Each of the world's 2 catalogued specimen IDs spawns as a placeholder
+  marker at a random position; already-collected specimens (checked against
+  `GameState.specimens`) don't respawn
+- Walking within pickup radius collects a specimen via
+  `GameState.add_specimen(id, world_id)` and autosaves
+- "Return to Ship" goes back to the Travel Screen
+- No creatures/encounters/combat yet — walking + collecting only (TODO next)
+
 ---
 
 ## Settling & Vessels
@@ -135,7 +148,7 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | Scene | Path | Status |
 |-------|------|--------|
 | Travel Screen | `scenes/travel/travel_screen.tscn` | ✅ v1 |
-| World Surface | `scenes/world/world_surface.tscn` | TODO |
+| World Surface | `scenes/world/world_surface.tscn` | ✅ v1 (walk + collect only) |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
 | Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |

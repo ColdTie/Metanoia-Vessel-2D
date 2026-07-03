@@ -20,6 +20,7 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _explore_button: Button
 
 var _selected_world_id: String = ""
 
@@ -200,6 +201,13 @@ func _build_right_panel(parent: Control) -> void:
 	_settle_button.pressed.connect(_on_settle_pressed)
 	btn_row.add_child(_settle_button)
 
+	_explore_button = Button.new()
+	_explore_button.text = "Explore Surface"
+	_explore_button.visible = false
+	_explore_button.custom_minimum_size = Vector2(160.0, 40.0)
+	_explore_button.pressed.connect(_on_explore_pressed)
+	btn_row.add_child(_explore_button)
+
 
 func _make_label(text: String) -> Label:
 	var lbl := Label.new()
@@ -259,6 +267,7 @@ func _select_world(world_id: String) -> void:
 		_depart_button.text = "Depart  (%d fuel)" % cost
 
 	_settle_button.visible = is_current and not world.get("settled", false)
+	_explore_button.visible = is_current
 
 
 func _on_depart_pressed() -> void:
@@ -274,6 +283,7 @@ func _on_depart_pressed() -> void:
 		_depart_button.disabled = true
 		_depart_button.text = "You are here"
 		_settle_button.visible = not world.get("settled", false)
+		_explore_button.visible = true
 	else:
 		_world_desc_label.text = \
 			GameState.get_world_by_id(_selected_world_id).get("description", "") \
@@ -315,3 +325,7 @@ func _on_settle_pressed() -> void:
 
 func _on_world_changed(_new_world: String) -> void:
 	_refresh_status()
+
+
+func _on_explore_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/world/world_surface.tscn")
