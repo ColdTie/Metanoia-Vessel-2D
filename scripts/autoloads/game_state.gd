@@ -4,6 +4,21 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Full passive roster. Settling draws 3 at random (excluding already-owned)
+# for the player to choose from. Keep in sync with design/systems.md.
+const PASSIVE_POOL: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+	{"id": "warm_current", "name": "Warm Current", "desc": "Temperate worlds refill 2 extra fuel on arrival."},
+	{"id": "still_hands", "name": "Still Hands", "desc": "Talk outcomes with wary creatures succeed more easily."},
+	{"id": "deep_charting", "name": "Deep Charting", "desc": "Reveals a world's specimens before you land there."},
+	{"id": "quiet_holds", "name": "Quiet Holds", "desc": "Ship decorations cost 10% fewer credits."},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -111,11 +126,35 @@ func travel_to_world(world_id: String) -> bool:
 	return true
 
 
+func get_passive_draw(count: int = 3) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+	var available: Array = PASSIVE_POOL.filter(
+		func(p): return not owned_ids.has(p["id"])
+	)
+	available.shuffle()
+	var draw: Array = available.slice(0, min(count, available.size()))
+	for i in draw.size():
+		draw[i] = draw[i].duplicate()  # PASSIVE_POOL entries are read-only constants
+	return draw
+
+
 func add_passive(passive: Dictionary) -> void:
 	passives.append(passive)
 	passive_gained.emit(passive)
+	_apply_passive_effect(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
+
+
+func _apply_passive_effect(passive: Dictionary) -> void:
+	# Only mechanically-wired effects live here; the rest are flavor until
+	# their underlying systems (specimens, dialogue, combat) exist.
+	match passive.get("id", ""):
+		"founding_bonus":
+			max_fuel += 5
+			refuel(5)
 
 
 func _trigger_void_check() -> void:

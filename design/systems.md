@@ -46,7 +46,9 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**: 3 passives are drawn at random from `GameState.PASSIVE_POOL`
+  (excluding ones already owned) and shown in a choose-1-of-3 panel
+  (`scenes/ui/passive_select.tscn`); the pick is granted via `GameState.add_passive`
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -59,18 +61,26 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Stored in `GameState.passives` array
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
+- Full roster lives in `GameState.PASSIVE_POOL` (10 entries, matching the
+  10 needed for void unlock); settling draws 3 unowned ones to choose from
+- Only `founding_bonus` (+5 max fuel) is mechanically wired so far, via
+  `GameState._apply_passive_effect`; the rest are flavor until their
+  underlying systems (specimens, dialogue, combat) exist
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 total)
 
 | ID | Name | Effect |
 |----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
+| founding_bonus | Founding Bonus | +5 max fuel (implemented) |
 | root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
 | echo_listener | Echo Listener | Unlocks extra creature dialogue options |
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| warm_current | Warm Current | Temperate worlds refill 2 extra fuel on arrival |
+| still_hands | Still Hands | Talk outcomes with wary creatures succeed more easily |
+| deep_charting | Deep Charting | Reveals a world's specimens before you land there |
+| quiet_holds | Quiet Holds | Ship decorations cost 10% fewer credits |
 
 ---
 
@@ -138,5 +148,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
