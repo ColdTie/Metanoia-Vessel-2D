@@ -111,6 +111,40 @@ func travel_to_world(world_id: String) -> bool:
 	return true
 
 
+# Pool drawn from for the choose-1-of-3 settlement reward (founding_bonus is
+# granted automatically on the player's first settlement and is not part of
+# this pool). Mechanical effects beyond founding_bonus are TODO — these are
+# recorded and displayed but not yet applied to gameplay.
+const PASSIVE_POOL: Array = [
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+	{"id": "keel_reinforced", "name": "Keel Reinforced", "desc": "Vessel hull reinforced — +5 max fuel."},
+	{"id": "star_chart", "name": "Star Chart", "desc": "Old star charts shave 1 fuel off every journey."},
+	{"id": "calm_current", "name": "Calm Current", "desc": "Ocean and ice crossings cost 1 less fuel."},
+	{"id": "quiet_orbit", "name": "Quiet Orbit", "desc": "Combat is never forced, anywhere, for the rest of the voyage."},
+]
+
+
+func owned_passive_ids() -> Array:
+	var ids: Array = []
+	for p in passives:
+		ids.append(p.get("id", ""))
+	return ids
+
+
+func draw_passive_options(count: int = 3) -> Array:
+	var owned := owned_passive_ids()
+	var candidates: Array = []
+	for p in PASSIVE_POOL:
+		if not owned.has(p["id"]):
+			candidates.append(p)
+	candidates.shuffle()
+	return candidates.slice(0, min(count, candidates.size()))
+
+
 func add_passive(passive: Dictionary) -> void:
 	passives.append(passive)
 	passive_gained.emit(passive)

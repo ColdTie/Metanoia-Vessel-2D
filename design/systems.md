@@ -46,7 +46,10 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**: player's first-ever settlement grants Founding Bonus
+  automatically; every settlement (including the first) then offers a
+  choose-1-of-3 popup drawn from `GameState.PASSIVE_POOL`
+  (`scenes/ui/passive_select.tscn`), excluding passives already owned
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -59,8 +62,11 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Stored in `GameState.passives` array
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
+- `founding_bonus` is granted automatically, once, on the player's first
+  settlement. The other 9 live in `GameState.PASSIVE_POOL` and are drawn
+  3-at-a-time (excluding owned) for the choose-1-of-3 settlement reward
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 total — matches `MAX_PASSIVES`)
 
 | ID | Name | Effect |
 |----|------|--------|
@@ -70,7 +76,13 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| keel_reinforced | Keel Reinforced | Vessel hull reinforced — +5 max fuel |
+| star_chart | Star Chart | Shaves 1 fuel off every journey |
+| calm_current | Calm Current | Ocean and ice crossings cost 1 less fuel |
+| quiet_orbit | Quiet Orbit | Combat is never forced, anywhere |
+
+Mechanical effects beyond `founding_bonus`'s max-fuel bump are still TODO —
+the rest are recorded and displayed but not yet applied to gameplay.
 
 ---
 
@@ -138,5 +150,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
