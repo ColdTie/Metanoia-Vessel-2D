@@ -45,8 +45,10 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO; currently auto "Vessel of X")
+- **Reward flow**: `GameState.get_passive_choices(3)` draws up to 3 passives from
+  `PASSIVE_POOL` (excluding ones already owned); `scenes/ui/passive_select.tscn`
+  presents them and the player picks one, granted via `GameState.add_passive`
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -60,17 +62,22 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (`GameState.PASSIVE_POOL` — 10 needed for void unlock)
 
 | ID | Name | Effect |
 |----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
-| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
-| echo_listener | Echo Listener | Unlocks extra creature dialogue options |
-| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
-| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
-| dust_walker | Dust Walker | Desert worlds never trigger forced combat |
+| founding_bonus | Founding Bonus | +5 max fuel (only mechanically wired effect so far) |
+| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens (TODO: wire effect) |
+| echo_listener | Echo Listener | Unlocks extra creature dialogue options (TODO: wire effect) |
+| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel (TODO: wire effect) |
+| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens (TODO: wire effect) |
+| dust_walker | Dust Walker | Desert worlds never trigger forced combat (TODO: wire effect) |
 | *(4 more TBD)* | | |
+
+Offered via choose-1-of-3 on settle (see Settling & Vessels above). Once all 6
+are owned, `get_passive_choices` returns fewer than 3 (or none) — the
+remaining 4 roster slots need designing before the void-unlock count of 10
+is reachable through settling alone.
 
 ---
 
@@ -138,5 +145,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
