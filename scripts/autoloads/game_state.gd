@@ -16,6 +16,47 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Passive roster — settling draws 3 of these (see get_passive_choices).
+# Mechanical effects that depend on unbuilt systems (dialogue, exploration,
+# combat) are recorded here as flavor/desc only until those systems land.
+const PASSIVE_ROSTER: Array = [
+	{
+		"id": "founding_bonus",
+		"name": "Founding Bonus",
+		"desc": "The act of founding grants clarity. +5 max fuel.",
+	},
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+	{
+		"id": "keel_efficiency",
+		"name": "Keel Efficiency",
+		"desc": "Travel to any settled world costs 1 less fuel.",
+	},
+]
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -102,7 +143,7 @@ func travel_to_world(world_id: String) -> bool:
 	var world := get_world_by_id(world_id)
 	if world.is_empty():
 		return false
-	var cost: int = world.get("distance", 0)
+	var cost: int = get_travel_cost(world)
 	if fuel < cost:
 		return false
 	fuel -= cost
@@ -111,9 +152,37 @@ func travel_to_world(world_id: String) -> bool:
 	return true
 
 
+func get_travel_cost(world: Dictionary) -> int:
+	var cost: int = world.get("distance", 0)
+	if world.get("type", "") == "ice" and has_passive("frost_hardened"):
+		cost = max(0, cost - 1)
+	if world.get("settled", false) and has_passive("keel_efficiency"):
+		cost = max(0, cost - 1)
+	return cost
+
+
+func has_passive(id: String) -> bool:
+	for passive in passives:
+		if passive.get("id", "") == id:
+			return true
+	return false
+
+
+func get_passive_choices(count: int = 3) -> Array:
+	var available: Array = []
+	for entry in PASSIVE_ROSTER:
+		if not has_passive(entry["id"]):
+			available.append(entry)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
+
+
 func add_passive(passive: Dictionary) -> void:
 	passives.append(passive)
 	passive_gained.emit(passive)
+	if passive.get("id", "") == "founding_bonus":
+		max_fuel += 5
+		refuel(5)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
 
