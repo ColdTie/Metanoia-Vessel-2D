@@ -8,6 +8,8 @@ const STAR_SPEEDS: Array = [12.0, 28.0, 55.0]
 const STAR_COUNTS: Array = [120, 70, 35]
 const STAR_SPAN_W: float = 2560.0   # double viewport width for seamless wrap
 
+const PassiveSelectScene := preload("res://scenes/ui/passive_select.tscn")
+
 var _star_layers: Array = []
 var _star_root: Node2D
 
@@ -20,6 +22,7 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _ui_root: Control
 
 var _selected_world_id: String = ""
 
@@ -96,6 +99,7 @@ func _build_ui() -> void:
 	root.name = "UIRoot"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(root)
+	_ui_root = root
 
 	_build_left_panel(root)
 	_build_right_panel(root)
@@ -290,7 +294,20 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
+	_settle_button.visible = false
+	_populate_destinations()
+
+	_world_name_label.text = world["name"]
+	_world_desc_label.text = "You have founded [b]" + world["vessel_name"] + "[/b]."
+
+	if GameState.passives.is_empty():
+		_grant_founding_bonus(world)
+	else:
+		_offer_passive_choice(world)
+
+
+func _grant_founding_bonus(world: Dictionary) -> void:
+	# First settlement ever: auto-grant Founding Bonus, no choice offered.
 	GameState.add_passive({
 		"id": "founding_bonus",
 		"name": "Founding Bonus",
@@ -299,18 +316,41 @@ func _on_settle_pressed() -> void:
 	})
 	GameState.max_fuel += 5
 	GameState.refuel(5)
-
-	_settle_button.visible = false
-	_populate_destinations()
 	_refresh_status()
+	_show_settle_note(world, "A passive has been recorded: [b]Founding Bonus[/b].")
+	SaveLoad.save_game()
 
+
+func _offer_passive_choice(world: Dictionary) -> void:
+	var choices: Array = GameState.draw_passive_choices(3, world["name"])
+	if choices.is_empty():
+		_refresh_status()
+		_show_settle_note(world, "No new passives remain to discover here.")
+		SaveLoad.save_game()
+		return
+
+	# Untyped: PassiveSelectScene.instantiate() statically returns Node, but
+	# .setup()/.passive_chosen live on the attached script — keep this
+	# Variant so GDScript resolves them dynamically instead of erroring.
+	var select = PassiveSelectScene.instantiate()
+	_ui_root.add_child(select)
+	select.setup(choices)
+	select.passive_chosen.connect(_on_passive_chosen.bind(world))
+
+
+func _on_passive_chosen(passive: Dictionary, world: Dictionary) -> void:
+	GameState.add_passive(passive)
+	_refresh_status()
+	_show_settle_note(world, "A passive has been recorded: [b]" + passive.get("name", "") + "[/b].")
+	SaveLoad.save_game()
+
+
+func _show_settle_note(world: Dictionary, note: String) -> void:
+	_world_name_label.text = world["name"]
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
-
-	SaveLoad.save_game()
+		+ "\n\n[color=#aaffaa]" + note + "[/color]"
 
 
 func _on_world_changed(_new_world: String) -> void:

@@ -46,7 +46,11 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**:
+  - First settlement ever: auto-grants **Founding Bonus** (+5 max fuel), no choice offered
+  - Every settlement after that: choose 1 of 3 randomly drawn, not-yet-owned
+    passives from the roster (`scenes/ui/passive_select.tscn`) ✅
+  - If the roster is exhausted (all owned), settling just confirms the Vessel
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -57,10 +61,13 @@ Each world carries:
 Persistent bonuses collected by settling, completing missions, and rare finds.
 
 - Stored in `GameState.passives` array
+- Full roster lives in `GameState.PASSIVE_ROSTER` (10 entries); drawn via
+  `GameState.draw_passive_choices(count, source)`, which excludes
+  `founding_bonus` and anything already owned
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 — matches void-unlock count)
 
 | ID | Name | Effect |
 |----|------|--------|
@@ -70,7 +77,15 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| trade_instinct | Trade Instinct | Plant and info sales yield 10% more credits |
+| steady_hands | Steady Hands | Combat encounters never cost you a specimen |
+| star_chart | Star Chart | See full world descriptions before you ever visit |
+| quiet_hull | Quiet Hull | Hostile creatures are more likely to offer a talk option |
+
+Note: only `founding_bonus` is mechanically wired (grants +5 max fuel on
+first settle). The rest are recorded on pick; their mechanical effects wire
+in as the systems they touch (ice travel, combat, specimen finds, etc.) are
+built.
 
 ---
 
@@ -138,5 +153,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |

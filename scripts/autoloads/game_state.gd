@@ -4,6 +4,22 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Full planned roster (10 — see design/systems.md). "founding_bonus" is
+# granted automatically on the player's first settlement and is never
+# offered through the choose-1-of-3 draw.
+const PASSIVE_ROSTER: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+	{"id": "trade_instinct", "name": "Trade Instinct", "desc": "Plant and info sales yield 10% more credits."},
+	{"id": "steady_hands", "name": "Steady Hands", "desc": "Combat encounters never cost you a specimen."},
+	{"id": "star_chart", "name": "Star Chart", "desc": "See full world descriptions before you ever visit."},
+	{"id": "quiet_hull", "name": "Quiet Hull", "desc": "Hostile creatures are more likely to offer a talk option."},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -109,6 +125,34 @@ func travel_to_world(world_id: String) -> bool:
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func get_owned_passive_ids() -> Array:
+	var ids: Array = []
+	for p in passives:
+		ids.append(p.get("id", ""))
+	return ids
+
+
+func draw_passive_choices(count: int, source: String) -> Array:
+	# Random, non-repeating draw from the roster, excluding founding_bonus
+	# (first-settlement-only) and any passive already owned.
+	var owned := get_owned_passive_ids()
+	var pool: Array = []
+	for entry in PASSIVE_ROSTER:
+		if entry["id"] == "founding_bonus":
+			continue
+		if entry["id"] in owned:
+			continue
+		pool.append(entry)
+	pool.shuffle()
+
+	var picks: Array = []
+	for i in min(count, pool.size()):
+		var choice: Dictionary = pool[i].duplicate()
+		choice["source"] = source
+		picks.append(choice)
+	return picks
 
 
 func add_passive(passive: Dictionary) -> void:
