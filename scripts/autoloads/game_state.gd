@@ -16,6 +16,62 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Full passive roster (10 total → void unlock threshold).
+# founding_bonus is granted automatically on the very first settlement and is
+# never offered through the random choose-1-of-3 draw.
+var passive_roster: Array = [
+	{
+		"id": "founding_bonus",
+		"name": "Founding Bonus",
+		"desc": "The act of founding grants clarity. +5 max fuel.",
+	},
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+	{
+		"id": "steady_hand",
+		"name": "Steady Hand",
+		"desc": "Combat encounters never end in a costly loss.",
+	},
+	{
+		"id": "quiet_orbit",
+		"name": "Quiet Orbit",
+		"desc": "Avoiding an encounter never costs fuel.",
+	},
+	{
+		"id": "deep_ledger",
+		"name": "Deep Ledger",
+		"desc": "Selling specimens and info earns 10% more credits.",
+	},
+	{
+		"id": "second_wind",
+		"name": "Second Wind",
+		"desc": "Refueling at a Vessel restores 5 extra fuel.",
+	},
+]
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -116,6 +172,18 @@ func add_passive(passive: Dictionary) -> void:
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
+
+
+func get_random_passive_choices(count: int = 3) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+	var pool: Array = []
+	for p in passive_roster:
+		if p["id"] != "founding_bonus" and not owned_ids.has(p["id"]):
+			pool.append(p)
+	pool.shuffle()
+	return pool.slice(0, min(count, pool.size()))
 
 
 func _trigger_void_check() -> void:

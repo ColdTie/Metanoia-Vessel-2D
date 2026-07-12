@@ -45,8 +45,13 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO)
+- **Reward flow**:
+  - First settlement ever → guaranteed **Founding Bonus** passive, no choice
+  - Every settlement after that → choose 1 of 3 randomly drawn passives
+    (implemented inline in `travel_screen.gd`; draw excludes passives
+    already owned and excludes `founding_bonus`)
+  - Travel is locked while a choice is pending
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -56,21 +61,30 @@ Each world carries:
 
 Persistent bonuses collected by settling, completing missions, and rare finds.
 
-- Stored in `GameState.passives` array
+- Stored in `GameState.passives` array; full pool lives in `GameState.passive_roster`
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (complete — 10 needed for void unlock)
 
 | ID | Name | Effect |
 |----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
+| founding_bonus | Founding Bonus | First settlement — +5 max fuel (guaranteed, not part of the random draw) |
 | root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
 | echo_listener | Echo Listener | Unlocks extra creature dialogue options |
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| steady_hand | Steady Hand | Combat encounters never end in a costly loss |
+| quiet_orbit | Quiet Orbit | Avoiding an encounter never costs fuel |
+| deep_ledger | Deep Ledger | Selling specimens and info earns 10% more credits |
+| second_wind | Second Wind | Refueling at a Vessel restores 5 extra fuel |
+
+Effects beyond `founding_bonus` are currently descriptive only — the
+underlying systems (combat, encounter avoidance, selling, refueling) are
+still TODO and will read these passives once built. `steady_hand` is the
+first combat-flavored passive; per design it should pay off mainly in the
+endgame void/black hole, once that's resolved (see Open Questions).
 
 ---
 
@@ -138,5 +152,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | inline in `travel_screen.gd` (no dedicated scene yet) | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
