@@ -287,29 +287,60 @@ func _on_settle_pressed() -> void:
 	if world.get("settled", false):
 		return
 
+	var is_first_settlement: bool = _count_settled_worlds() == 0
+
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
-
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
 
 	_settle_button.visible = false
 	_populate_destinations()
 	_refresh_status()
 
+	if is_first_settlement:
+		# First settlement always grants Founding Bonus outright.
+		GameState.add_passive({
+			"id": "founding_bonus",
+			"name": "Founding Bonus",
+			"desc": "The act of founding grants clarity. +5 max fuel.",
+			"source": world["name"],
+		})
+		GameState.max_fuel += 5
+		GameState.refuel(5)
+		_refresh_status()
+		_finish_settle_flow(world)
+	else:
+		var choices := GameState.draw_passive_choices(3)
+		if choices.is_empty():
+			_finish_settle_flow(world)
+		else:
+			_show_passive_select(world, choices)
+
+
+func _count_settled_worlds() -> int:
+	var n := 0
+	for w in GameState.world_catalog:
+		if w.get("settled", false):
+			n += 1
+	return n
+
+
+func _show_passive_select(world: Dictionary, choices: Array) -> void:
+	var popup = preload("res://scenes/ui/passive_select.tscn").instantiate()
+	add_child(popup)
+	popup.passive_chosen.connect(func(passive: Dictionary):
+		passive["source"] = world["name"]
+		GameState.add_passive(passive)
+		_refresh_status()
+		_finish_settle_flow(world)
+	)
+	popup.open(choices)
+
+
+func _finish_settle_flow(world: Dictionary) -> void:
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
-
+		+ "\n\n[color=#aaffaa]A passive has been recorded.[/color]"
 	SaveLoad.save_game()
 
 

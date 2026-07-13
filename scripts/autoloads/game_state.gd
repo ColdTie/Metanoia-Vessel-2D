@@ -4,6 +4,17 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Choose-1-of-3 pool. Founding Bonus is granted automatically on the first
+# settlement and is not part of this draw pool. 4 more entries are TBD
+# per design/systems.md's Passive Roster.
+const PASSIVE_POOL: Array = [
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -143,3 +154,22 @@ func add_specimen(specimen_id: String, world_id: String) -> void:
 
 func refuel(amount: int) -> void:
 	fuel = min(fuel + amount, max_fuel)
+
+
+func get_owned_passive_ids() -> Array:
+	var ids: Array = []
+	for p in passives:
+		ids.append(p.get("id", ""))
+	return ids
+
+
+# Draws up to `count` unowned passives at random from PASSIVE_POOL, for the
+# choose-1-of-3 settling reward. Returns fewer if the pool is running dry.
+func draw_passive_choices(count: int = 3) -> Array:
+	var owned := get_owned_passive_ids()
+	var available: Array = []
+	for p in PASSIVE_POOL:
+		if not owned.has(p["id"]):
+			available.append(p.duplicate())
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
