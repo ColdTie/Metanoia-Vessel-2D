@@ -16,6 +16,10 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Passive pool — master list drawn from for the choose-1-of-3 settling reward.
+# Each entry: {id, name, desc}
+var passive_pool: Array = []
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -23,6 +27,7 @@ signal credits_changed(amount: int)
 
 func _ready() -> void:
 	_build_world_catalog()
+	_build_passive_pool()
 
 
 func _build_world_catalog() -> void:
@@ -78,6 +83,72 @@ func _build_world_catalog() -> void:
 			"specimens": ["lens_fish", "tide_weaver"],
 		},
 	]
+
+
+func _build_passive_pool() -> void:
+	passive_pool = [
+		{
+			"id": "founding_bonus",
+			"name": "Founding Bonus",
+			"desc": "The act of founding grants clarity. +5 max fuel.",
+		},
+		{
+			"id": "root_knowledge",
+			"name": "Root Knowledge",
+			"desc": "Jungle worlds yield extra specimens.",
+		},
+		{
+			"id": "echo_listener",
+			"name": "Echo Listener",
+			"desc": "Unlocks extra creature dialogue options.",
+		},
+		{
+			"id": "frost_hardened",
+			"name": "Frost Hardened",
+			"desc": "Ice-world travel costs 1 less fuel.",
+		},
+		{
+			"id": "tide_reader",
+			"name": "Tide Reader",
+			"desc": "Ocean worlds reveal hidden specimens.",
+		},
+		{
+			"id": "dust_walker",
+			"name": "Dust Walker",
+			"desc": "Desert worlds never trigger forced combat.",
+		},
+		{
+			"id": "keel_reinforced",
+			"name": "Keel Reinforced",
+			"desc": "Your ship shrugs off more damage in combat encounters.",
+		},
+		{
+			"id": "trade_instinct",
+			"name": "Trade Instinct",
+			"desc": "Selling plants and info at a Vessel earns more credits.",
+		},
+		{
+			"id": "steady_hand",
+			"name": "Steady Hand",
+			"desc": "Avoiding a hostile encounter never costs extra fuel.",
+		},
+		{
+			"id": "deep_current",
+			"name": "Deep Current",
+			"desc": "A quiet pull toward the dark between stars. Its full effect waits at the edge of the void.",
+		},
+	]
+
+
+func get_passive_draw(count: int = 3) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+	var available: Array = passive_pool.filter(
+		func(p): return not owned_ids.has(p["id"])
+	)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func get_world_by_id(id: String) -> Dictionary:

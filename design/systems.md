@@ -46,7 +46,11 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**: `GameState.get_passive_draw(3)` picks 3 non-owned passives at
+  random from `passive_pool`; `scenes/ui/passive_select.tscn` shows them as a
+  modal, player picks one, `GameState.add_passive()` grants it. Draw shrinks as
+  the pool is exhausted; empty draw shows a "no new passives" message and
+  settling still succeeds without a grant.
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -60,7 +64,7 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster — `GameState.passive_pool` (10 entries; source of choose-1-of-3 draws)
 
 | ID | Name | Effect |
 |----|------|--------|
@@ -70,7 +74,14 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| keel_reinforced | Keel Reinforced | Ship takes less damage in combat encounters |
+| trade_instinct | Trade Instinct | Selling plants/info earns more credits |
+| steady_hand | Steady Hand | Avoiding a hostile encounter never costs extra fuel |
+| deep_current | Deep Current | Flavor-only for now — effect deferred to the void/black-hole endgame (see below) |
+
+All 10 pool entries currently apply +5 max fuel on grant (via `travel_screen._on_passive_chosen`);
+per-type mechanical effects (extra specimens, cheaper ice travel, etc.) are
+still TODO and tracked as future increments.
 
 ---
 
@@ -138,5 +149,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
