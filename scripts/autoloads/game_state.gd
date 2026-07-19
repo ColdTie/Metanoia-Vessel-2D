@@ -16,6 +16,42 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Full passive roster (see design/systems.md). founding_bonus is auto-granted
+# on the player's first settlement; the rest are drawn as choose-1-of-3 on
+# every settlement after that.
+var passive_catalog: Array = [
+	{
+		"id": "founding_bonus",
+		"name": "Founding Bonus",
+		"desc": "The act of founding grants clarity. +5 max fuel.",
+	},
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+]
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -103,6 +139,8 @@ func travel_to_world(world_id: String) -> bool:
 	if world.is_empty():
 		return false
 	var cost: int = world.get("distance", 0)
+	if world.get("type", "") == "ice" and has_passive("frost_hardened"):
+		cost = max(0, cost - 1)
 	if fuel < cost:
 		return false
 	fuel -= cost
@@ -111,9 +149,40 @@ func travel_to_world(world_id: String) -> bool:
 	return true
 
 
-func add_passive(passive: Dictionary) -> void:
-	passives.append(passive)
-	passive_gained.emit(passive)
+func has_passive(passive_id: String) -> bool:
+	for passive in passives:
+		if passive.get("id", "") == passive_id:
+			return true
+	return false
+
+
+func has_settled_any_world() -> bool:
+	for world in world_catalog:
+		if world.get("settled", false):
+			return true
+	return false
+
+
+## Returns up to `count` unowned passive definitions (id/name/desc), shuffled.
+## founding_bonus is excluded — it's granted automatically, never drawn.
+func draw_passive_choices(count: int = 3) -> Array:
+	var pool: Array = []
+	for def in passive_catalog:
+		if def["id"] != "founding_bonus" and not has_passive(def["id"]):
+			pool.append(def)
+	pool.shuffle()
+	return pool.slice(0, min(count, pool.size()))
+
+
+func add_passive(passive: Dictionary, source: String = "") -> void:
+	var entry: Dictionary = passive.duplicate()
+	if source != "":
+		entry["source"] = source
+	passives.append(entry)
+	passive_gained.emit(entry)
+	if entry.get("id", "") == "founding_bonus":
+		max_fuel += 5
+		refuel(5)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
 

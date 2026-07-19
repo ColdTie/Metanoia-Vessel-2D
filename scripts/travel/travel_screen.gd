@@ -7,6 +7,7 @@ extends Control
 const STAR_SPEEDS: Array = [12.0, 28.0, 55.0]
 const STAR_COUNTS: Array = [120, 70, 35]
 const STAR_SPAN_W: float = 2560.0   # double viewport width for seamless wrap
+const PassiveSelectScene := preload("res://scenes/ui/passive_select.tscn")
 
 var _star_layers: Array = []
 var _star_root: Node2D
@@ -287,30 +288,48 @@ func _on_settle_pressed() -> void:
 	if world.get("settled", false):
 		return
 
+	var is_first_settlement: bool = not GameState.has_settled_any_world()
+
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
-
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
 
 	_settle_button.visible = false
 	_populate_destinations()
 	_refresh_status()
 
+	if is_first_settlement:
+		GameState.add_passive(GameState.passive_catalog[0], world["name"])
+		_show_settle_message(world, "Founding Bonus")
+		SaveLoad.save_game()
+		return
+
+	var choices: Array = GameState.draw_passive_choices(3)
+	if choices.is_empty():
+		_show_settle_message(world, "")
+		SaveLoad.save_game()
+		return
+
+	var popup := PassiveSelectScene.instantiate()
+	add_child(popup)
+	popup.passive_chosen.connect(_on_passive_chosen.bind(world))
+	popup.open(choices)
+
+
+func _on_passive_chosen(passive: Dictionary, world: Dictionary) -> void:
+	GameState.add_passive(passive, world["name"])
+	_show_settle_message(world, passive.get("name", ""))
+	_refresh_status()
+	SaveLoad.save_game()
+
+
+func _show_settle_message(world: Dictionary, passive_name: String) -> void:
+	var passive_line: String = ""
+	if passive_name != "":
+		passive_line = "\n\n[color=#aaffaa]Passive gained: " + passive_name + "[/color]"
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
-
-	SaveLoad.save_game()
+		+ passive_line
 
 
 func _on_world_changed(_new_world: String) -> void:

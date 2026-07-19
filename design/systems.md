@@ -46,7 +46,11 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**: the player's *first* settlement auto-grants Founding Bonus;
+  every settlement after that opens a choose-1-of-3 popup
+  (`scenes/ui/passive_select.tscn`) drawn from the unowned passive pool
+- If the pool is exhausted (all non-founding passives owned), settling grants
+  no passive and just confirms the Vessel
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -62,15 +66,20 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 
 ### Passive Roster (planned — 10 needed for void unlock)
 
-| ID | Name | Effect |
-|----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
-| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
-| echo_listener | Echo Listener | Unlocks extra creature dialogue options |
-| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
-| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
-| dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| ID | Name | Effect | Implemented? |
+|----|------|--------|--------------|
+| founding_bonus | Founding Bonus | First settlement — +5 max fuel | ✅ mechanical |
+| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens | data-only (specimens TODO) |
+| echo_listener | Echo Listener | Unlocks extra creature dialogue options | data-only (dialogue TODO) |
+| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel | ✅ mechanical |
+| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens | data-only (specimens TODO) |
+| dust_walker | Dust Walker | Desert worlds never trigger forced combat | data-only (encounters TODO) |
+| *(4 more TBD)* | | | |
+
+All six live in `GameState.passive_catalog`. `GameState.draw_passive_choices(n)`
+returns up to `n` unowned, non-founding entries shuffled; `GameState.add_passive()`
+applies known mechanical effects (currently just the founding fuel bonus) and
+records everything else as data for systems that don't exist yet.
 
 ---
 
@@ -138,5 +147,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
