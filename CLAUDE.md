@@ -23,12 +23,16 @@ design/
 scenes/
   travel/
     travel_screen.tscn   — main navigation hub (start scene)
+  world/
+    world_surface.tscn   — walkable exploration scene (per current world)
 scripts/
   autoloads/
     game_state.gd        — singleton: world catalog, player state, signals
     save_load.gd         — load/save to user://save.json
   travel/
     travel_screen.gd     — travel screen UI + logic (builds UI in code)
+  world/
+    world_surface.gd     — walk + collect specimens (builds UI in code)
 ```
 
 ## Autoloads
@@ -44,7 +48,7 @@ scripts/
 - **Worlds**: catalogued in `GameState.world_catalog`, 5 worlds v1
 - **Settling**: marks world settled, adds placeholder passive (choose-1-of-3 TODO)
 - **Passives**: `GameState.passives`, max 10 → void unlock check
-- **Specimens**: collected during world exploration (TODO)
+- **Specimens**: collected on the World Surface scene by walking into pickups; `GameState.add_specimen()`. Creature encounters (talk/avoid/combat) still TODO
 - **Combat**: ~1/3 missions; almost never forced; rewards ≠ killing
 
 ## Open Questions

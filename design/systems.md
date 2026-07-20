@@ -83,6 +83,24 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 
 ---
 
+## World Surface & Specimens
+
+- "Explore Surface" button appears on the Travel Screen whenever the player
+  is at a world (available before and after settling)
+- Opens `scenes/world/world_surface.tscn`: a top-down walkable scene
+  (arrow keys / WASD) sized to the 1280x720 viewport, background tinted by
+  world type
+- Each world's 2 catalog specimens spawn as pickups at fixed screen spots;
+  walking the player into one collects it via `GameState.add_specimen()`
+  and autosaves
+- Already-collected specimens (checked against `GameState.specimens`) don't
+  re-spawn on a repeat visit
+- No creatures/encounters yet — this increment is walk-and-collect only;
+  creature dialogue/avoid/combat is a separate future increment
+- "Return to Ship" button goes back to the Travel Screen
+
+---
+
 ## Encounters & Creatures
 
 Encounter types per mission:
@@ -135,7 +153,7 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | Scene | Path | Status |
 |-------|------|--------|
 | Travel Screen | `scenes/travel/travel_screen.tscn` | ✅ v1 |
-| World Surface | `scenes/world/world_surface.tscn` | TODO |
+| World Surface | `scenes/world/world_surface.tscn` | ✅ v1 |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
 | Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
