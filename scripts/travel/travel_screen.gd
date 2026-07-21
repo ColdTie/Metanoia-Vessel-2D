@@ -8,10 +8,13 @@ const STAR_SPEEDS: Array = [12.0, 28.0, 55.0]
 const STAR_COUNTS: Array = [120, 70, 35]
 const STAR_SPAN_W: float = 2560.0   # double viewport width for seamless wrap
 
+const PassiveSelectScene := preload("res://scenes/ui/passive_select.tscn")
+
 var _star_layers: Array = []
 var _star_root: Node2D
 
 # UI node refs
+var _ui_root: Control
 var _location_label: Label
 var _fuel_label: Label
 var _passives_label: Label
@@ -96,6 +99,7 @@ func _build_ui() -> void:
 	root.name = "UIRoot"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(root)
+	_ui_root = root
 
 	_build_left_panel(root)
 	_build_right_panel(root)
@@ -224,8 +228,8 @@ func _populate_destinations() -> void:
 	for world in GameState.world_catalog:
 		var btn := Button.new()
 		var settled_tag: String = " [V]" if world.get("settled", false) else ""
-		var dist: int = world.get("distance", 0)
-		var cost_tag: String = " (%d)" % dist if dist > 0 else " (start)"
+		var dist: int = GameState.get_travel_cost(world["id"])
+		var cost_tag: String = " (%d)" % dist if world.get("distance", 0) > 0 else " (start)"
 		var is_current: bool = world["name"] == GameState.current_world
 		btn.text = ("> " if is_current else "") + world["name"] + settled_tag + cost_tag
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -244,7 +248,7 @@ func _select_world(world_id: String) -> void:
 	_world_name_label.text = world["name"]
 	_world_desc_label.text = world.get("description", "")
 
-	var cost: int = world.get("distance", 0)
+	var cost: int = GameState.get_travel_cost(world_id)
 	var is_current: bool = world["name"] == GameState.current_world
 	var can_afford: bool = GameState.fuel >= cost
 
@@ -290,27 +294,54 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
-	_refresh_status()
 
-	_world_desc_label.text = \
-		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+	var is_first_settlement: bool = GameState.passives.is_empty()
+	if is_first_settlement:
+		# The founding passive is a fixed, one-time reward — no choice offered.
+		GameState.add_passive({
+			"id": "founding_bonus",
+			"name": "Founding Bonus",
+			"desc": "The act of founding grants clarity. +5 max fuel.",
+			"source": world["name"],
+		})
+		GameState.max_fuel += 5
+		GameState.refuel(5)
+		_refresh_status()
+		_world_desc_label.text = \
+			"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
+			+ world.get("description", "") \
+			+ "\n\n[color=#aaffaa]Founding Bonus recorded: +5 max fuel.[/color]"
+		SaveLoad.save_game()
+	else:
+		_refresh_status()
+		_world_desc_label.text = \
+			"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
+			+ world.get("description", "") \
+			+ "\n\n[color=#aaffaa]Choose a passive to commemorate this Vessel.[/color]"
+		_offer_passive_choice(world)
 
-	SaveLoad.save_game()
+
+func _offer_passive_choice(world: Dictionary) -> void:
+	var choices := GameState.draw_passive_choices(3)
+	if choices.is_empty():
+		SaveLoad.save_game()
+		return
+
+	var popup = PassiveSelectScene.instantiate()
+	_ui_root.add_child(popup)
+	popup.setup(choices)
+	popup.passive_chosen.connect(func(passive: Dictionary):
+		GameState.add_passive({
+			"id": passive.get("id", ""),
+			"name": passive.get("name", ""),
+			"desc": passive.get("desc", ""),
+			"source": world["name"],
+		})
+		_refresh_status()
+		SaveLoad.save_game()
+	)
 
 
 func _on_world_changed(_new_world: String) -> void:

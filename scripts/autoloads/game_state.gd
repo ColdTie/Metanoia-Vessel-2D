@@ -16,6 +16,11 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Passives offered via choose-1-of-3 on second-and-later settlements.
+# founding_bonus is excluded — it is granted automatically on the first
+# settlement only, and is never part of this drawn pool.
+var passive_roster: Array = []
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -23,6 +28,7 @@ signal credits_changed(amount: int)
 
 func _ready() -> void:
 	_build_world_catalog()
+	_build_passive_roster()
 
 
 func _build_world_catalog() -> void:
@@ -80,6 +86,74 @@ func _build_world_catalog() -> void:
 	]
 
 
+func _build_passive_roster() -> void:
+	passive_roster = [
+		{
+			"id": "root_knowledge",
+			"name": "Root Knowledge",
+			"desc": "Jungle worlds yield extra specimens.",
+		},
+		{
+			"id": "echo_listener",
+			"name": "Echo Listener",
+			"desc": "Unlocks extra creature dialogue options.",
+		},
+		{
+			"id": "frost_hardened",
+			"name": "Frost Hardened",
+			"desc": "Ice-world travel costs 1 less fuel.",
+		},
+		{
+			"id": "tide_reader",
+			"name": "Tide Reader",
+			"desc": "Ocean worlds reveal hidden specimens.",
+		},
+		{
+			"id": "dust_walker",
+			"name": "Dust Walker",
+			"desc": "Desert worlds never trigger forced combat.",
+		},
+		{
+			"id": "deep_diver",
+			"name": "Deep Diver",
+			"desc": "Ocean-world travel costs 1 less fuel.",
+		},
+		{
+			"id": "warm_current",
+			"name": "Warm Current",
+			"desc": "Arriving at a temperate world refuels 2 extra fuel.",
+		},
+		{
+			"id": "canopy_guide",
+			"name": "Canopy Guide",
+			"desc": "Jungle creatures always offer a talk option, even hostile ones.",
+		},
+		{
+			"id": "stellar_cartographer",
+			"name": "Stellar Cartographer",
+			"desc": "All travel costs 1 less fuel (minimum 1).",
+		},
+	]
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+# Draws up to `count` unique passives from the roster, excluding any the
+# player already owns. Used to populate the choose-1-of-3 settling reward.
+func draw_passive_choices(count: int = 3) -> Array:
+	var pool: Array = []
+	for p in passive_roster:
+		if not has_passive(p["id"]):
+			pool.append(p)
+	pool.shuffle()
+	return pool.slice(0, min(count, pool.size()))
+
+
 func get_world_by_id(id: String) -> Dictionary:
 	for world in world_catalog:
 		if world["id"] == id:
@@ -98,17 +172,37 @@ func get_current_world_data() -> Dictionary:
 	return get_world_by_name(current_world)
 
 
+func get_travel_cost(world_id: String) -> int:
+	var world := get_world_by_id(world_id)
+	if world.is_empty():
+		return 0
+	return _travel_cost_with_passives(world)
+
+
 func travel_to_world(world_id: String) -> bool:
 	var world := get_world_by_id(world_id)
 	if world.is_empty():
 		return false
-	var cost: int = world.get("distance", 0)
+	var cost: int = _travel_cost_with_passives(world)
 	if fuel < cost:
 		return false
 	fuel -= cost
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func _travel_cost_with_passives(world: Dictionary) -> int:
+	var cost: int = world.get("distance", 0)
+	if cost <= 0:
+		return cost
+	if has_passive("stellar_cartographer"):
+		cost -= 1
+	if world.get("type", "") == "ice" and has_passive("frost_hardened"):
+		cost -= 1
+	if world.get("type", "") == "ocean" and has_passive("deep_diver"):
+		cost -= 1
+	return max(cost, 1)
 
 
 func add_passive(passive: Dictionary) -> void:
