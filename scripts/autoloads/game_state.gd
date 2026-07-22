@@ -11,6 +11,7 @@ var specimens: Array = []         # Array of {id, world_id, name}
 var credits: int = 0
 var fuel: int = 100
 var max_fuel: int = 100
+var exploring_world_id: String = ""  # set before entering world_surface.tscn
 
 # World catalog — initialized in _ready(); mutated when worlds are settled.
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
@@ -139,6 +140,14 @@ func spend_credits(amount: int) -> bool:
 
 func add_specimen(specimen_id: String, world_id: String) -> void:
 	specimens.append({"id": specimen_id, "world_id": world_id})
+
+
+func get_collected_specimen_ids(world_id: String) -> Array:
+	var ids: Array = []
+	for s in specimens:
+		if s.get("world_id", "") == world_id:
+			ids.append(s.get("id", ""))
+	return ids
 
 
 func refuel(amount: int) -> void:
