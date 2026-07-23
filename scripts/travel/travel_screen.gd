@@ -8,6 +8,8 @@ const STAR_SPEEDS: Array = [12.0, 28.0, 55.0]
 const STAR_COUNTS: Array = [120, 70, 35]
 const STAR_SPAN_W: float = 2560.0   # double viewport width for seamless wrap
 
+const PASSIVE_SELECT_SCENE := preload("res://scenes/ui/passive_select.tscn")
+
 var _star_layers: Array = []
 var _star_root: Node2D
 
@@ -290,25 +292,42 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
+
+	var choices: Array = GameState.get_passive_choices(3)
+	if choices.is_empty():
+		_finish_settle(world, {})
+		return
+
+	var overlay := PASSIVE_SELECT_SCENE.instantiate() as PassiveSelect
+	overlay.choices = choices
+	overlay.passive_chosen.connect(func(passive: Dictionary):
+		overlay.queue_free()
+		_finish_settle(world, passive)
+	)
+	add_child(overlay)
+
+
+func _finish_settle(world: Dictionary, passive: Dictionary) -> void:
+	var passive_note: String
+	if not passive.is_empty():
+		passive["source"] = world["name"]
+		GameState.add_passive(passive)
+		if passive.get("id", "") == "founding_bonus":
+			GameState.max_fuel += 5
+			GameState.refuel(5)
+		passive_note = "\n\n[color=#aaffaa]New passive: [b]" + passive.get("name", "") \
+			+ "[/b] — " + passive.get("desc", "") + "[/color]"
+	else:
+		passive_note = "\n\n[color=#aaaaaa]No new passives available.[/color]"
+
 	_refresh_status()
 
+	_world_name_label.text = world.get("name", "")
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ world.get("description", "") + passive_note
 
 	SaveLoad.save_game()
 

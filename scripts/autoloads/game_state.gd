@@ -16,6 +16,10 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Full passive roster — drawn from for the choose-1-of-3 settling reward.
+# Each entry: {id, name, desc}. "source" is stamped on when granted.
+var passive_pool: Array = []
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -23,6 +27,7 @@ signal credits_changed(amount: int)
 
 func _ready() -> void:
 	_build_world_catalog()
+	_build_passive_pool()
 
 
 func _build_world_catalog() -> void:
@@ -78,6 +83,77 @@ func _build_world_catalog() -> void:
 			"specimens": ["lens_fish", "tide_weaver"],
 		},
 	]
+
+
+func _build_passive_pool() -> void:
+	passive_pool = [
+		{
+			"id": "founding_bonus",
+			"name": "Founding Bonus",
+			"desc": "The act of founding grants clarity. +5 max fuel.",
+		},
+		{
+			"id": "root_knowledge",
+			"name": "Root Knowledge",
+			"desc": "Jungle worlds yield extra specimens.",
+		},
+		{
+			"id": "echo_listener",
+			"name": "Echo Listener",
+			"desc": "Unlocks extra creature dialogue options.",
+		},
+		{
+			"id": "frost_hardened",
+			"name": "Frost Hardened",
+			"desc": "Ice-world travel costs 1 less fuel.",
+		},
+		{
+			"id": "tide_reader",
+			"name": "Tide Reader",
+			"desc": "Ocean worlds reveal hidden specimens.",
+		},
+		{
+			"id": "dust_walker",
+			"name": "Dust Walker",
+			"desc": "Desert worlds never trigger forced combat.",
+		},
+		{
+			"id": "steady_hands",
+			"name": "Steady Hands",
+			"desc": "Combat encounters, when chosen, carry less risk of loss.",
+		},
+		{
+			"id": "deep_pockets",
+			"name": "Deep Pockets",
+			"desc": "Specimens and info sell for more credits.",
+		},
+		{
+			"id": "wayfinder",
+			"name": "Wayfinder",
+			"desc": "Charted routes grow shorter over time; travel costs trend down.",
+		},
+		{
+			"id": "void_tuned",
+			"name": "Void Tuned",
+			"desc": "An attunement to the deep dark. Its purpose becomes clear only near the void.",
+		},
+	]
+
+
+func owns_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+func get_passive_choices(count: int = 3) -> Array:
+	var available: Array = []
+	for p in passive_pool:
+		if not owns_passive(p["id"]):
+			available.append(p.duplicate())
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func get_world_by_id(id: String) -> Dictionary:
