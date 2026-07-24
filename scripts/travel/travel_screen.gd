@@ -20,6 +20,7 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _choice_box: VBoxContainer
 
 var _selected_world_id: String = ""
 
@@ -200,6 +201,11 @@ func _build_right_panel(parent: Control) -> void:
 	_settle_button.pressed.connect(_on_settle_pressed)
 	btn_row.add_child(_settle_button)
 
+	_choice_box = VBoxContainer.new()
+	_choice_box.visible = false
+	_choice_box.add_theme_constant_override("separation", 6)
+	vbox.add_child(_choice_box)
+
 
 func _make_label(text: String) -> Label:
 	var lbl := Label.new()
@@ -287,28 +293,79 @@ func _on_settle_pressed() -> void:
 	if world.get("settled", false):
 		return
 
+	_settle_button.visible = false
+
+	if GameState.passives.is_empty():
+		# First settlement ever: founding passive is automatic, not chosen.
+		_finalize_settle(world, {
+			"id": "founding_bonus",
+			"name": "Founding Bonus",
+			"desc": "The act of founding grants clarity. +5 max fuel.",
+			"source": world["name"],
+		})
+		GameState.max_fuel += 5
+		GameState.refuel(5)
+	else:
+		_show_passive_choices(world)
+
+
+func _show_passive_choices(world: Dictionary) -> void:
+	var choices: Array = GameState.get_passive_choices(3)
+	if choices.is_empty():
+		_finalize_settle(world, {})
+		return
+
+	_world_name_label.text = "Choose a Passive"
+	_world_desc_label.text = "Founding " + world["name"] + " grants a passive. Choose one:"
+
+	for child in _dest_list.get_children():
+		if child is Button:
+			child.disabled = true
+
+	for child in _choice_box.get_children():
+		child.queue_free()
+	_choice_box.visible = true
+
+	for choice in choices:
+		var btn := Button.new()
+		btn.text = choice["name"] + "\n" + choice["desc"]
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.pressed.connect(func(): _on_passive_chosen(world, choice))
+		_choice_box.add_child(btn)
+
+
+func _on_passive_chosen(world: Dictionary, passive: Dictionary) -> void:
+	for child in _choice_box.get_children():
+		child.queue_free()
+	_choice_box.visible = false
+	_finalize_settle(world, passive)
+
+
+func _finalize_settle(world: Dictionary, passive: Dictionary) -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
+	if not passive.is_empty():
+		var granted := passive.duplicate()
+		granted["source"] = world["name"]
+		GameState.add_passive(granted)
 
-	_settle_button.visible = false
 	_populate_destinations()
 	_refresh_status()
+
+	_world_name_label.text = world["vessel_name"]
+
+	var passive_note: String
+	if passive.is_empty():
+		passive_note = "[color=#aaffaa]No new passives remain to grant.[/color]"
+	else:
+		passive_note = "[color=#aaffaa]Passive gained: [b]%s[/b] — %s[/color]" \
+			% [passive["name"], passive["desc"]]
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n" + passive_note
 
 	SaveLoad.save_game()
 

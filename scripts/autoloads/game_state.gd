@@ -4,6 +4,21 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Full passive roster. founding_bonus is granted automatically on the first
+# settlement; every other entry is drawn into the choose-1-of-3 pool.
+const PASSIVE_ROSTER: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+	{"id": "deep_current", "name": "Deep Current", "desc": "Ocean-world Vessels refill fuel faster."},
+	{"id": "star_chart", "name": "Star Chart", "desc": "Reveals hidden low-fuel routes between settled worlds."},
+	{"id": "steady_hand", "name": "Steady Hand", "desc": "Hostile creatures are less likely to force combat."},
+	{"id": "void_tether", "name": "Void Tether", "desc": "Strengthens your resolve as the void draws near."},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -109,6 +124,20 @@ func travel_to_world(world_id: String) -> bool:
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func get_passive_choices(count: int = 3) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+
+	var available: Array = []
+	for entry in PASSIVE_ROSTER:
+		if entry["id"] != "founding_bonus" and not owned_ids.has(entry["id"]):
+			available.append(entry)
+
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func add_passive(passive: Dictionary) -> void:
