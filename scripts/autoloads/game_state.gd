@@ -4,6 +4,16 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Choosable passive pool for the settle-reward choice-of-3 (founding_bonus is
+# granted automatically on the player's first settlement, not drawn from here).
+const PASSIVE_POOL: Array = [
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -103,6 +113,8 @@ func travel_to_world(world_id: String) -> bool:
 	if world.is_empty():
 		return false
 	var cost: int = world.get("distance", 0)
+	if world.get("type", "") == "ice" and has_passive("frost_hardened"):
+		cost = max(0, cost - 1)
 	if fuel < cost:
 		return false
 	fuel -= cost
@@ -116,6 +128,29 @@ func add_passive(passive: Dictionary) -> void:
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+## Draws up to `count` unowned passives from PASSIVE_POOL for a choose-1-of-3
+## settle reward. `source` is stamped onto each candidate (e.g. world name).
+func draw_passive_choices(count: int, source: String) -> Array:
+	var available: Array = []
+	for p in PASSIVE_POOL:
+		if not has_passive(p["id"]):
+			available.append(p)
+	available.shuffle()
+	var picks: Array = []
+	for i in min(count, available.size()):
+		var entry: Dictionary = available[i].duplicate()
+		entry["source"] = source
+		picks.append(entry)
+	return picks
 
 
 func _trigger_void_check() -> void:
