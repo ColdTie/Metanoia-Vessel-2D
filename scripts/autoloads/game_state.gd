@@ -16,6 +16,10 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Passives offered by the choose-1-of-3 settling reward (founding_bonus is
+# granted automatically on the player's first settlement, not drawn here).
+var passive_pool: Array = []
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -23,6 +27,7 @@ signal credits_changed(amount: int)
 
 func _ready() -> void:
 	_build_world_catalog()
+	_build_passive_pool()
 
 
 func _build_world_catalog() -> void:
@@ -78,6 +83,79 @@ func _build_world_catalog() -> void:
 			"specimens": ["lens_fish", "tide_weaver"],
 		},
 	]
+
+
+func _build_passive_pool() -> void:
+	passive_pool = [
+		{
+			"id": "root_knowledge",
+			"name": "Root Knowledge",
+			"desc": "Jungle worlds yield extra specimens.",
+		},
+		{
+			"id": "echo_listener",
+			"name": "Echo Listener",
+			"desc": "Unlocks extra creature dialogue options.",
+		},
+		{
+			"id": "frost_hardened",
+			"name": "Frost Hardened",
+			"desc": "Ice-world travel costs 1 less fuel.",
+		},
+		{
+			"id": "tide_reader",
+			"name": "Tide Reader",
+			"desc": "Ocean worlds reveal hidden specimens.",
+		},
+		{
+			"id": "dust_walker",
+			"name": "Dust Walker",
+			"desc": "Desert worlds never trigger forced combat.",
+		},
+		{
+			"id": "starlit_calm",
+			"name": "Starlit Calm",
+			"desc": "Talking your way through an encounter yields a bonus specimen.",
+		},
+		{
+			"id": "void_sense",
+			"name": "Void Sense",
+			"desc": "Combat missions are flagged before you depart for them.",
+		},
+		{
+			"id": "trade_instinct",
+			"name": "Trade Instinct",
+			"desc": "Selling specimens and info earns 20% more credits.",
+		},
+		{
+			"id": "deep_reserve",
+			"name": "Deep Reserve",
+			"desc": "+5 max fuel.",
+		},
+	]
+
+
+func has_settled_any_world() -> bool:
+	for world in world_catalog:
+		if world.get("settled", false):
+			return true
+	return false
+
+
+## Returns up to `count` passives the player doesn't already own, drawn
+## randomly from passive_pool. Used for the choose-1-of-3 settling reward.
+func draw_passive_choices(count: int = 3) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+
+	var available: Array = []
+	for p in passive_pool:
+		if not owned_ids.has(p["id"]):
+			available.append(p)
+
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func get_world_by_id(id: String) -> Dictionary:

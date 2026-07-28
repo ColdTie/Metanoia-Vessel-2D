@@ -46,7 +46,11 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**:
+  - First settlement ever: grants **Founding Bonus** automatically (+5 max fuel)
+  - Every settlement after that: choose 1 of 3 randomly drawn passives, shown
+    as an in-scene overlay (`_show_passive_choice` in `travel_screen.gd`)
+  - If the player already owns every passive in the pool, no choice is offered
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -60,7 +64,11 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 total — reaching all 10 triggers void unlock)
+
+`founding_bonus` is granted automatically on the player's first settlement.
+The other 9 live in `GameState.passive_pool` and are offered via the
+choose-1-of-3 draw on every settlement after the first.
 
 | ID | Name | Effect |
 |----|------|--------|
@@ -70,7 +78,10 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| starlit_calm | Starlit Calm | Talking through an encounter yields a bonus specimen |
+| void_sense | Void Sense | Combat missions are flagged before you depart for them |
+| trade_instinct | Trade Instinct | Selling specimens/info earns 20% more credits |
+| deep_reserve | Deep Reserve | +5 max fuel |
 
 ---
 
@@ -138,5 +149,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | in-code overlay, `travel_screen.gd` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
