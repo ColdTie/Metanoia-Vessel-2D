@@ -4,6 +4,21 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Full planned roster (see design/systems.md). Settling draws 3 of these
+# (excluding ones already owned) for a choose-1-of-3 reward.
+const PASSIVE_POOL: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+	{"id": "calm_diplomat", "name": "Calm Diplomat", "desc": "Hostile creatures are more likely to offer a talk resolution."},
+	{"id": "deep_reserves", "name": "Deep Reserves", "desc": "+10 max fuel."},
+	{"id": "scavengers_instinct", "name": "Scavenger's Instinct", "desc": "Exploration finds award bonus credits."},
+	{"id": "void_tempered", "name": "Void-Tempered", "desc": "Combat encounters in the void/black hole deal reduced damage (endgame)."},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -114,8 +129,31 @@ func travel_to_world(world_id: String) -> bool:
 func add_passive(passive: Dictionary) -> void:
 	passives.append(passive)
 	passive_gained.emit(passive)
+	match passive.get("id", ""):
+		"founding_bonus":
+			max_fuel += 5
+			refuel(5)
+		"deep_reserves":
+			max_fuel += 10
+			refuel(10)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
+
+
+# Draws up to `count` passives from PASSIVE_POOL, excluding ones already
+# owned by id, for a choose-1-of-3 settling reward.
+func draw_passive_choices(count: int = 3) -> Array:
+	var owned_ids := {}
+	for p in passives:
+		owned_ids[p.get("id", "")] = true
+
+	var available: Array = []
+	for p in PASSIVE_POOL:
+		if not owned_ids.has(p["id"]):
+			available.append(p)
+
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func _trigger_void_check() -> void:
