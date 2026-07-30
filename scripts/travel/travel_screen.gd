@@ -20,6 +20,7 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _ui_root: Control
 
 var _selected_world_id: String = ""
 
@@ -96,6 +97,7 @@ func _build_ui() -> void:
 	root.name = "UIRoot"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(root)
+	_ui_root = root
 
 	_build_left_panel(root)
 	_build_right_panel(root)
@@ -290,15 +292,17 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
+	# First settlement ever grants the founding passive automatically.
+	var is_first_settlement: bool = not GameState.has_passive("founding_bonus")
+	if is_first_settlement:
+		GameState.add_passive({
+			"id": "founding_bonus",
+			"name": "Founding Bonus",
+			"desc": "The act of founding grants clarity. +5 max fuel.",
+			"source": world["name"],
+		})
+		GameState.max_fuel += 5
+		GameState.refuel(5)
 
 	_settle_button.visible = false
 	_populate_destinations()
@@ -306,11 +310,27 @@ func _on_settle_pressed() -> void:
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ world.get("description", "")
 
 	SaveLoad.save_game()
+	_offer_passive_choice(world["name"])
+
+
+func _offer_passive_choice(source: String) -> void:
+	var choices: Array = GameState.draw_passive_choices(3, source)
+	if choices.is_empty():
+		return
+
+	var dialog := preload("res://scenes/ui/passive_select.tscn").instantiate()
+	_ui_root.add_child(dialog)
+	dialog.setup(choices)
+	dialog.passive_chosen.connect(func(passive: Dictionary):
+		GameState.add_passive(passive)
+		_refresh_status()
+		_world_desc_label.text += \
+			"\n\n[color=#aaffaa]New passive: " + passive.get("name", "") + "[/color]"
+		SaveLoad.save_game()
+	)
 
 
 func _on_world_changed(_new_world: String) -> void:

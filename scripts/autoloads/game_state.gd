@@ -4,6 +4,16 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Passive roster offered via choose-1-of-3 on settling. founding_bonus is
+# granted automatically on the player's first settlement, not drawn from here.
+const PASSIVE_ROSTER: Array = [
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -116,6 +126,31 @@ func add_passive(passive: Dictionary) -> void:
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+## Draws up to `count` passives the player doesn't already have, in random
+## order, for a choose-1-of-3 style reward prompt. Returns fewer than `count`
+## if the roster is running low (roster growth is tracked as a TODO).
+func draw_passive_choices(count: int = 3, source: String = "") -> Array:
+	var available: Array = []
+	for p in PASSIVE_ROSTER:
+		if not has_passive(p["id"]):
+			available.append(p)
+	available.shuffle()
+
+	var picks: Array = []
+	for i in min(count, available.size()):
+		var pick: Dictionary = available[i].duplicate()
+		pick["source"] = source
+		picks.append(pick)
+	return picks
 
 
 func _trigger_void_check() -> void:
