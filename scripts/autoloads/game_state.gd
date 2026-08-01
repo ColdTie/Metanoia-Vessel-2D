@@ -16,6 +16,10 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Passive pool — full roster of obtainable passives. Drawn from on settling.
+# Each entry: {id, name, desc, effect}
+var passive_pool: Array = []
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -23,6 +27,7 @@ signal credits_changed(amount: int)
 
 func _ready() -> void:
 	_build_world_catalog()
+	_build_passive_pool()
 
 
 func _build_world_catalog() -> void:
@@ -80,6 +85,68 @@ func _build_world_catalog() -> void:
 	]
 
 
+func _build_passive_pool() -> void:
+	passive_pool = [
+		{
+			"id": "founding_bonus",
+			"name": "Founding Bonus",
+			"desc": "The act of founding grants clarity. +5 max fuel.",
+			"effect": "max_fuel_bonus",
+		},
+		{
+			"id": "root_knowledge",
+			"name": "Root Knowledge",
+			"desc": "Jungle worlds yield extra specimens.",
+			"effect": "jungle_specimen_bonus",
+		},
+		{
+			"id": "echo_listener",
+			"name": "Echo Listener",
+			"desc": "Unlocks extra creature dialogue options.",
+			"effect": "extra_dialogue",
+		},
+		{
+			"id": "frost_hardened",
+			"name": "Frost Hardened",
+			"desc": "Ice-world travel costs 1 less fuel.",
+			"effect": "ice_travel_discount",
+		},
+		{
+			"id": "tide_reader",
+			"name": "Tide Reader",
+			"desc": "Ocean worlds reveal hidden specimens.",
+			"effect": "ocean_hidden_specimens",
+		},
+		{
+			"id": "dust_walker",
+			"name": "Dust Walker",
+			"desc": "Desert worlds never trigger forced combat.",
+			"effect": "desert_no_forced_combat",
+		},
+	]
+
+
+func get_owned_passive_ids() -> Array:
+	var ids: Array = []
+	for p in passives:
+		ids.append(p.get("id", ""))
+	return ids
+
+
+func has_passive(id: String) -> bool:
+	return get_owned_passive_ids().has(id)
+
+
+func draw_passive_choices(count: int = 3) -> Array:
+	var owned := get_owned_passive_ids()
+	var available: Array = []
+	for p in passive_pool:
+		if not owned.has(p["id"]):
+			available.append(p)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
+
+
 func get_world_by_id(id: String) -> Dictionary:
 	for world in world_catalog:
 		if world["id"] == id:
@@ -103,6 +170,8 @@ func travel_to_world(world_id: String) -> bool:
 	if world.is_empty():
 		return false
 	var cost: int = world.get("distance", 0)
+	if world.get("type", "") == "ice" and has_passive("frost_hardened"):
+		cost = max(0, cost - 1)
 	if fuel < cost:
 		return false
 	fuel -= cost
@@ -113,9 +182,20 @@ func travel_to_world(world_id: String) -> bool:
 
 func add_passive(passive: Dictionary) -> void:
 	passives.append(passive)
+	_apply_passive_effect(passive)
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
+
+
+func _apply_passive_effect(passive: Dictionary) -> void:
+	match passive.get("effect", ""):
+		"max_fuel_bonus":
+			max_fuel += 5
+			refuel(5)
+		# Other effects (jungle_specimen_bonus, extra_dialogue, ocean_hidden_specimens,
+		# desert_no_forced_combat) apply within systems that don't exist yet
+		# (exploration, dialogue, combat) — TODO once those land.
 
 
 func _trigger_void_check() -> void:
