@@ -22,6 +22,9 @@ var _depart_button: Button
 var _settle_button: Button
 
 var _selected_world_id: String = ""
+var _ui_canvas: CanvasLayer
+
+const PassiveSelectDialog := preload("res://scripts/ui/passive_select_dialog.gd")
 
 
 func _ready() -> void:
@@ -91,6 +94,7 @@ func _build_ui() -> void:
 	var canvas := CanvasLayer.new()
 	canvas.name = "UI"
 	add_child(canvas)
+	_ui_canvas = canvas
 
 	var root := Control.new()
 	root.name = "UIRoot"
@@ -289,26 +293,40 @@ func _on_settle_pressed() -> void:
 
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
-
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
+
+	var choices := GameState.draw_passive_choices(3)
+	if choices.is_empty():
+		_finish_settle(world, {})
+		return
+
+	var dialog := PassiveSelectDialog.new()
+	_ui_canvas.add_child(dialog)
+	dialog.setup(choices)
+	dialog.chosen.connect(func(passive: Dictionary):
+		dialog.queue_free()
+		_finish_settle(world, passive)
+	)
+
+
+func _finish_settle(world: Dictionary, passive: Dictionary) -> void:
+	if not passive.is_empty():
+		var granted: Dictionary = passive.duplicate()
+		granted["source"] = world["name"]
+		GameState.add_passive(granted)
+		if granted["id"] == "founding_bonus":
+			GameState.max_fuel += 5
+			GameState.refuel(5)
+
 	_populate_destinations()
 	_refresh_status()
 
+	var passive_line: String = ("Gained passive: " + passive["name"]) \
+		if not passive.is_empty() else "No passives were available to choose from."
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n[color=#aaffaa]" + passive_line + "[/color]"
 
 	SaveLoad.save_game()
 
