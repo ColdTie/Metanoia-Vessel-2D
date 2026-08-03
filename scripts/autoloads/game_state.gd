@@ -4,6 +4,37 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Drawable passive pool for the choose-1-of-3 settling reward.
+# founding_bonus is NOT in this pool — it's granted automatically on the
+# player's first settlement (see travel_screen.gd _on_settle_pressed).
+const PASSIVE_POOL: Array = [
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -103,12 +134,30 @@ func travel_to_world(world_id: String) -> bool:
 	if world.is_empty():
 		return false
 	var cost: int = world.get("distance", 0)
+	if world.get("type", "") == "ice" and has_passive("frost_hardened"):
+		cost = max(0, cost - 1)
 	if fuel < cost:
 		return false
 	fuel -= cost
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func has_passive(passive_id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == passive_id:
+			return true
+	return false
+
+
+func draw_passive_choices(count: int = 3) -> Array:
+	var available: Array = []
+	for entry in PASSIVE_POOL:
+		if not has_passive(entry["id"]):
+			available.append(entry)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func add_passive(passive: Dictionary) -> void:
