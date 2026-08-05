@@ -42,6 +42,24 @@ Each world carries:
 
 ---
 
+## Exploration & Specimens
+
+- From the Travel Screen, "Explore Surface" (visible while docked at the
+  current world) opens the **World Surface** scene
+- Player walks a fixed 1280×720 field (arrow keys / WASD); background color
+  reflects world **type**
+- Each of the world's 2 catalog specimens spawns as a pickup at a randomized
+  position; walking into one collects it (`GameState.add_specimen`)
+- Collection is idempotent per world — already-collected specimens don't
+  respawn on a repeat visit (`GameState.has_specimen`)
+- Game autosaves on each pickup and on return, so surface progress survives
+  the scene swap back to the Travel Screen
+- "Return to Ship" exits back to `travel_screen.tscn`
+- No creatures/encounters yet — this is pure walk-and-collect; talk/avoid/
+  combat encounters are still TODO (see Encounters & Creatures below)
+
+---
+
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
@@ -135,7 +153,7 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | Scene | Path | Status |
 |-------|------|--------|
 | Travel Screen | `scenes/travel/travel_screen.tscn` | ✅ v1 |
-| World Surface | `scenes/world/world_surface.tscn` | TODO |
+| World Surface | `scenes/world/world_surface.tscn` | ✅ v1 (walk + collect specimens) |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
 | Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |

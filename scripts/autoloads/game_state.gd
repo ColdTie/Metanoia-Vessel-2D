@@ -141,5 +141,12 @@ func add_specimen(specimen_id: String, world_id: String) -> void:
 	specimens.append({"id": specimen_id, "world_id": world_id})
 
 
+func has_specimen(specimen_id: String, world_id: String) -> bool:
+	for s in specimens:
+		if s.get("id", "") == specimen_id and s.get("world_id", "") == world_id:
+			return true
+	return false
+
+
 func refuel(amount: int) -> void:
 	fuel = min(fuel + amount, max_fuel)
