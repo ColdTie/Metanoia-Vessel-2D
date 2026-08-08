@@ -4,6 +4,20 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Passive pool for settling rewards. "founding_bonus" is reserved for the
+# player's first settlement (granted automatically, not drawn); the rest
+# are offered as a choose-1-of-3 on every settlement after that.
+# Effects beyond founding_bonus's +5 max fuel are flavor-only for now —
+# wiring their mechanics into gameplay is future work.
+const PASSIVE_ROSTER: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "First settlement — +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -135,6 +149,30 @@ func spend_credits(amount: int) -> bool:
 	credits -= amount
 	credits_changed.emit(credits)
 	return true
+
+
+func get_granted_passive_ids() -> Array:
+	var ids: Array = []
+	for p in passives:
+		ids.append(p.get("id", ""))
+	return ids
+
+
+func get_available_passives() -> Array:
+	var granted := get_granted_passive_ids()
+	var available: Array = []
+	for p in PASSIVE_ROSTER:
+		if p["id"] == "founding_bonus":
+			continue
+		if not granted.has(p["id"]):
+			available.append(p)
+	return available
+
+
+func draw_passive_choices(count: int = 3) -> Array:
+	var pool := get_available_passives()
+	pool.shuffle()
+	return pool.slice(0, min(count, pool.size()))
 
 
 func add_specimen(specimen_id: String, world_id: String) -> void:
