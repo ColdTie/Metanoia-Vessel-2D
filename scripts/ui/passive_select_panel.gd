@@ -1,0 +1,59 @@
+extends Control
+class_name PassiveSelectPanel
+
+# Modal choose-1-of-3 passive reward panel, shown after founding a Vessel.
+# Built in code (no .tscn) so it can be instanced and dropped into any
+# screen's UI layer, matching travel_screen.gd's programmatic-UI pattern.
+
+signal passive_chosen(passive: Dictionary)
+
+var _choices: Array = []
+
+
+func open(choices: Array) -> void:
+	_choices = choices
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	_build_ui()
+
+
+func _build_ui() -> void:
+	var dim := ColorRect.new()
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.0, 0.0, 0.0, 0.6)
+	add_child(dim)
+
+	var panel := PanelContainer.new()
+	panel.set_anchor(SIDE_LEFT,   0.5)
+	panel.set_anchor(SIDE_TOP,    0.5)
+	panel.set_anchor(SIDE_RIGHT,  0.5)
+	panel.set_anchor(SIDE_BOTTOM, 0.5)
+	panel.set_offset(SIDE_LEFT,   -280.0)
+	panel.set_offset(SIDE_TOP,    -170.0)
+	panel.set_offset(SIDE_RIGHT,  280.0)
+	panel.set_offset(SIDE_BOTTOM, 170.0)
+	add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	panel.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Choose a Passive"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	vbox.add_child(HSeparator.new())
+
+	for choice in _choices:
+		var btn := Button.new()
+		btn.text = "%s — %s" % [choice.get("name", ""), choice.get("desc", "")]
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn.custom_minimum_size = Vector2(0.0, 56.0)
+		var picked: Dictionary = choice
+		btn.pressed.connect(func(): _on_choice_pressed(picked))
+		vbox.add_child(btn)
+
+
+func _on_choice_pressed(choice: Dictionary) -> void:
+	passive_chosen.emit(choice)
+	queue_free()

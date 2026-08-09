@@ -20,6 +20,7 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _ui_canvas: CanvasLayer
 
 var _selected_world_id: String = ""
 
@@ -91,6 +92,7 @@ func _build_ui() -> void:
 	var canvas := CanvasLayer.new()
 	canvas.name = "UI"
 	add_child(canvas)
+	_ui_canvas = canvas
 
 	var root := Control.new()
 	root.name = "UIRoot"
@@ -290,13 +292,8 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
+	# Founding a Vessel expands your reach, regardless of which passive
+	# is chosen below.
 	GameState.max_fuel += 5
 	GameState.refuel(5)
 
@@ -307,10 +304,27 @@ func _on_settle_pressed() -> void:
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n[color=#aaffaa]Choose a passive to carry forward.[/color]"
 
-	SaveLoad.save_game()
+	_show_passive_choice(world["name"])
+
+
+func _show_passive_choice(source_world_name: String) -> void:
+	var choices := GameState.draw_passive_choices(3)
+	if choices.is_empty():
+		SaveLoad.save_game()
+		return
+
+	var panel := PassiveSelectPanel.new()
+	_ui_canvas.add_child(panel)
+	panel.passive_chosen.connect(func(chosen: Dictionary):
+		var granted: Dictionary = chosen.duplicate()
+		granted["source"] = source_world_name
+		GameState.add_passive(granted)
+		_refresh_status()
+		SaveLoad.save_game()
+	)
+	panel.open(choices)
 
 
 func _on_world_changed(_new_world: String) -> void:
