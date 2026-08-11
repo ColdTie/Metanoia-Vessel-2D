@@ -4,6 +4,16 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Pool for the choose-1-of-3 settling reward. founding_bonus is granted
+# automatically for the act of founding and is not part of this pool.
+const PASSIVE_DEFINITIONS: Array = [
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -143,3 +153,15 @@ func add_specimen(specimen_id: String, world_id: String) -> void:
 
 func refuel(amount: int) -> void:
 	fuel = min(fuel + amount, max_fuel)
+
+
+func get_passive_choices(count: int = 3) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+	var pool: Array = []
+	for def in PASSIVE_DEFINITIONS:
+		if not owned_ids.has(def["id"]):
+			pool.append(def)
+	pool.shuffle()
+	return pool.slice(0, min(count, pool.size()))

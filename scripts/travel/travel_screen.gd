@@ -7,6 +7,7 @@ extends Control
 const STAR_SPEEDS: Array = [12.0, 28.0, 55.0]
 const STAR_COUNTS: Array = [120, 70, 35]
 const STAR_SPAN_W: float = 2560.0   # double viewport width for seamless wrap
+const PASSIVE_SELECT_SCENE := preload("res://scenes/ui/passive_select.tscn")
 
 var _star_layers: Array = []
 var _star_root: Node2D
@@ -20,6 +21,7 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _ui_root: Control
 
 var _selected_world_id: String = ""
 
@@ -99,6 +101,7 @@ func _build_ui() -> void:
 
 	_build_left_panel(root)
 	_build_right_panel(root)
+	_ui_root = root
 
 
 func _build_left_panel(parent: Control) -> void:
@@ -290,7 +293,7 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
+	# Grant the founding passive for the act of founding itself.
 	GameState.add_passive({
 		"id": "founding_bonus",
 		"name": "Founding Bonus",
@@ -306,10 +309,31 @@ func _on_settle_pressed() -> void:
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ world.get("description", "")
 
+	var choices: Array = GameState.get_passive_choices(3)
+	if choices.is_empty():
+		_world_desc_label.text += \
+			"\n\n[color=#aaffaa]The founding passive has been recorded.[/color]"
+		SaveLoad.save_game()
+	else:
+		var picker: Control = PASSIVE_SELECT_SCENE.instantiate()
+		_ui_root.add_child(picker)
+		var source_name: String = world["name"]
+		picker.passive_selected.connect(func(choice): _on_passive_chosen(choice, source_name))
+		picker.open(choices)
+
+
+func _on_passive_chosen(choice: Dictionary, source_world: String) -> void:
+	GameState.add_passive({
+		"id": choice.get("id", ""),
+		"name": choice.get("name", ""),
+		"desc": choice.get("desc", ""),
+		"source": source_world,
+	})
+	_refresh_status()
+	_world_desc_label.text += \
+		"\n\n[color=#aaffaa]New passive recorded: " + choice.get("name", "") + "[/color]"
 	SaveLoad.save_game()
 
 
