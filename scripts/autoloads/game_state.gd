@@ -16,6 +16,22 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# All 10 passives obtainable by settling (reaching MAX_PASSIVES triggers the void check).
+# "founding_bonus" is granted automatically on the player's first settlement and is never
+# offered through the choose-1-of-3 draw; the rest are drawn 3-at-a-time on later settlements.
+var passive_roster: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "An instinct for the tangle. Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "You hear what goes unsaid. Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Cold no longer slows you. Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "The water shows its secrets. Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "The dust knows your step. Desert worlds never trigger forced combat."},
+	{"id": "quiet_diplomat", "name": "Quiet Diplomat", "desc": "Words land softer in your mouth. Talk outcomes succeed more often, even with hostile creatures."},
+	{"id": "steady_hand", "name": "Steady Hand", "desc": "You do not flinch. Your first strike in each combat encounter always lands."},
+	{"id": "deep_pockets", "name": "Deep Pockets", "desc": "You know what things are worth. Specimen and info sales pay 20% more credits."},
+	{"id": "void_sight", "name": "Void Sight", "desc": "Something in you sees the dark clearly. Hazards reveal themselves before they trigger — most useful nearing the void."},
+]
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -96,6 +112,25 @@ func get_world_by_name(name: String) -> Dictionary:
 
 func get_current_world_data() -> Dictionary:
 	return get_world_by_name(current_world)
+
+
+func get_passive_template(id: String) -> Dictionary:
+	for p in passive_roster:
+		if p["id"] == id:
+			return p
+	return {}
+
+
+func draw_passive_choices(count: int) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+	var pool: Array = []
+	for p in passive_roster:
+		if p["id"] != "founding_bonus" and not owned_ids.has(p["id"]):
+			pool.append(p)
+	pool.shuffle()
+	return pool.slice(0, min(count, pool.size()))
 
 
 func travel_to_world(world_id: String) -> bool:

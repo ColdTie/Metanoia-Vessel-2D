@@ -22,6 +22,7 @@ var _depart_button: Button
 var _settle_button: Button
 
 var _selected_world_id: String = ""
+var _ui_canvas: CanvasLayer
 
 
 func _ready() -> void:
@@ -91,6 +92,7 @@ func _build_ui() -> void:
 	var canvas := CanvasLayer.new()
 	canvas.name = "UI"
 	add_child(canvas)
+	_ui_canvas = canvas
 
 	var root := Control.new()
 	root.name = "UIRoot"
@@ -289,28 +291,125 @@ func _on_settle_pressed() -> void:
 
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
-
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
+
+	if GameState.passives.is_empty():
+		# First settlement ever: the founding passive is automatic, not a choice.
+		_apply_passive(GameState.get_passive_template("founding_bonus"), world)
+	else:
+		var choices: Array = GameState.draw_passive_choices(3)
+		if choices.is_empty():
+			_finish_settle(world, {})
+		else:
+			_show_passive_choice_dialog(choices, world)
+
+
+func _apply_passive(template: Dictionary, world: Dictionary) -> void:
+	if template.is_empty():
+		_finish_settle(world, {})
+		return
+
+	var passive := {
+		"id": template["id"],
+		"name": template["name"],
+		"desc": template["desc"],
+		"source": world["name"],
+	}
+	GameState.add_passive(passive)
+	if template["id"] == "founding_bonus":
+		GameState.max_fuel += 5
+		GameState.refuel(5)
+
+	_finish_settle(world, passive)
+
+
+func _finish_settle(world: Dictionary, passive: Dictionary) -> void:
 	_populate_destinations()
 	_refresh_status()
 
-	_world_desc_label.text = \
+	var msg: String = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ world.get("description", "")
+	if not passive.is_empty():
+		msg += "\n\n[color=#aaffaa]New passive: " + passive["name"] \
+			+ " — " + passive["desc"] + "[/color]"
+	else:
+		msg += "\n\n[color=#aaaaaa]All passives already collected.[/color]"
+	_world_desc_label.text = msg
 
 	SaveLoad.save_game()
+
+
+# ── Passive choice dialog (choose-1-of-3) ───────────────────────────────────────
+
+func _show_passive_choice_dialog(choices: Array, world: Dictionary) -> void:
+	var blocker := ColorRect.new()
+	blocker.name = "PassiveDialogBlocker"
+	blocker.color = Color(0.0, 0.0, 0.0, 0.6)
+	blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	_ui_canvas.add_child(blocker)
+
+	var panel := PanelContainer.new()
+	panel.set_anchor(SIDE_LEFT,   0.5)
+	panel.set_anchor(SIDE_TOP,    0.5)
+	panel.set_anchor(SIDE_RIGHT,  0.5)
+	panel.set_anchor(SIDE_BOTTOM, 0.5)
+	panel.set_offset(SIDE_LEFT,   -240.0)
+	panel.set_offset(SIDE_TOP,    -200.0)
+	panel.set_offset(SIDE_RIGHT,  240.0)
+	panel.set_offset(SIDE_BOTTOM, 200.0)
+	blocker.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	panel.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Choose a Passive"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	vbox.add_child(HSeparator.new())
+
+	for choice in choices:
+		vbox.add_child(_build_passive_choice_row(choice, choices, world, blocker))
+
+
+func _build_passive_choice_row(choice: Dictionary, choices: Array, world: Dictionary, blocker: Control) -> Control:
+	var row := PanelContainer.new()
+
+	var row_vbox := VBoxContainer.new()
+	row_vbox.add_theme_constant_override("separation", 4)
+	row.add_child(row_vbox)
+
+	var name_label := Label.new()
+	name_label.text = choice["name"]
+	row_vbox.add_child(name_label)
+
+	var desc_label := Label.new()
+	desc_label.text = choice["desc"]
+	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row_vbox.add_child(desc_label)
+
+	var choose_btn := Button.new()
+	choose_btn.text = "Choose"
+	var chosen_id: String = choice["id"]
+	choose_btn.pressed.connect(func(): _on_passive_chosen(chosen_id, choices, world, blocker))
+	row_vbox.add_child(choose_btn)
+
+	return row
+
+
+func _on_passive_chosen(passive_id: String, choices: Array, world: Dictionary, blocker: Control) -> void:
+	blocker.queue_free()
+
+	var template: Dictionary = {}
+	for c in choices:
+		if c["id"] == passive_id:
+			template = c
+			break
+
+	_apply_passive(template, world)
 
 
 func _on_world_changed(_new_world: String) -> void:
