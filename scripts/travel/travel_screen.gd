@@ -290,28 +290,92 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
+	_refresh_status()
+
+	var choices := GameState.get_passive_choices(3)
+	if choices.is_empty():
+		_world_desc_label.text = \
+			"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
+			+ world.get("description", "") \
+			+ "\n\n[color=#aaffaa]All known passives have already been claimed.[/color]"
+		SaveLoad.save_game()
+	else:
+		_show_passive_choice(world, choices)
+
+
+func _on_world_changed(_new_world: String) -> void:
+	_refresh_status()
+
+
+# ── Passive choice overlay ───────────────────────────────────────────────────
+
+func _show_passive_choice(world: Dictionary, choices: Array) -> void:
+	var canvas := CanvasLayer.new()
+	canvas.name = "PassiveChoiceOverlay"
+	canvas.layer = 10
+	add_child(canvas)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0.0, 0.0, 0.0, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	canvas.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	canvas.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(480.0, 0.0)
+	center.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	panel.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Choose a Passive for " + world["vessel_name"]
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	vbox.add_child(HSeparator.new())
+
+	for passive in choices:
+		var option := VBoxContainer.new()
+		option.add_theme_constant_override("separation", 2)
+		vbox.add_child(option)
+
+		var btn := Button.new()
+		btn.text = passive["name"]
+		btn.custom_minimum_size = Vector2(0.0, 36.0)
+		var p: Dictionary = passive
+		btn.pressed.connect(func(): _on_passive_chosen(canvas, world, p))
+		option.add_child(btn)
+
+		var desc := Label.new()
+		desc.text = passive["desc"]
+		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		option.add_child(desc)
+
+
+func _on_passive_chosen(overlay: CanvasLayer, world: Dictionary, passive: Dictionary) -> void:
+	var granted: Dictionary = passive.duplicate()
+	granted["source"] = world["name"]
+	GameState.add_passive(granted)
+
+	# Only founding_bonus has a mechanical effect implemented so far;
+	# the rest are recorded for their future systems (see design/systems.md).
+	if granted["id"] == "founding_bonus":
+		GameState.max_fuel += 5
+		GameState.refuel(5)
+
+	overlay.queue_free()
 	_refresh_status()
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n[color=#aaffaa]Passive gained: " + granted["name"] + "[/color]"
 
 	SaveLoad.save_game()
-
-
-func _on_world_changed(_new_world: String) -> void:
-	_refresh_status()
