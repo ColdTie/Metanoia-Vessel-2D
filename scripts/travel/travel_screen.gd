@@ -290,25 +290,79 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
 	_refresh_status()
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ world.get("description", "")
+
+	var choices: Array = GameState.draw_passive_choices(3)
+	if choices.is_empty():
+		SaveLoad.save_game()
+	else:
+		_show_passive_choice(world, choices)
+
+
+# ── Passive choose-1-of-3 overlay ───────────────────────────────────────────────
+
+func _show_passive_choice(world: Dictionary, choices: Array) -> void:
+	var overlay := CanvasLayer.new()
+	overlay.name = "PassiveChoiceOverlay"
+	overlay.layer = 10
+	add_child(overlay)
+
+	var blocker := ColorRect.new()
+	blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	blocker.color = Color(0.0, 0.0, 0.0, 0.6)
+	blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(blocker)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(420.0, 0.0)
+	center.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	panel.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Choose a passive for " + world.get("vessel_name", world.get("name", ""))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(title)
+	vbox.add_child(HSeparator.new())
+
+	for entry in choices:
+		var btn := Button.new()
+		btn.text = entry["name"] + "\n" + entry["desc"]
+		btn.custom_minimum_size = Vector2(0.0, 56.0)
+		var picked: Dictionary = entry
+		btn.pressed.connect(func(): _on_passive_chosen(picked, world, overlay))
+		vbox.add_child(btn)
+
+
+func _on_passive_chosen(entry: Dictionary, world: Dictionary, overlay: CanvasLayer) -> void:
+	GameState.add_passive({
+		"id": entry["id"],
+		"name": entry["name"],
+		"desc": entry["desc"],
+		"source": world.get("name", ""),
+	})
+	if entry["id"] == "founding_bonus":
+		GameState.max_fuel += 5
+		GameState.refuel(5)
+
+	overlay.queue_free()
+	_refresh_status()
+
+	_world_desc_label.text += \
+		"\n\n[color=#aaffaa]Passive gained: " + entry["name"] + "[/color]"
 
 	SaveLoad.save_game()
 
