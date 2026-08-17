@@ -20,6 +20,57 @@ signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
 
+# Choose-1-of-3 pool. Granted via draw_passive_choices() on every settle
+# after the first (the first settle always grants founding_bonus below).
+# 9 entries here + founding_bonus = the 10 needed for the void unlock.
+const PASSIVE_POOL: Array = [
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+	{
+		"id": "steady_hands",
+		"name": "Steady Hands",
+		"desc": "Talk options succeed more often against hostile creatures.",
+	},
+	{
+		"id": "keen_eye",
+		"name": "Keen Eye",
+		"desc": "Specimens are collected in pairs during exploration.",
+	},
+	{
+		"id": "fair_trader",
+		"name": "Fair Trader",
+		"desc": "Selling plants and info earns more credits.",
+	},
+	{
+		"id": "starlit_navigator",
+		"name": "Starlit Navigator",
+		"desc": "All travel costs 1 less fuel (minimum 1).",
+	},
+]
+
 
 func _ready() -> void:
 	_build_world_catalog()
@@ -109,6 +160,18 @@ func travel_to_world(world_id: String) -> bool:
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func draw_passive_choices(count: int) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+	var available: Array = []
+	for p in PASSIVE_POOL:
+		if not owned_ids.has(p["id"]):
+			available.append(p)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func add_passive(passive: Dictionary) -> void:
