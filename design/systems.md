@@ -45,8 +45,10 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO; currently auto-named "Vessel of X")
+- **Reward flow**: ✅ choose 1 of 3 randomly drawn, unowned passives from `PASSIVE_ROSTER`
+  (modal overlay in `travel_screen.gd`); if all are already owned, settling still
+  succeeds with no new passive
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -59,18 +61,23 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Stored in `GameState.passives` array
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
+- Candidate passives live in `GameState.PASSIVE_ROSTER`; `get_passive_choices(3)`
+  draws up to 3 unowned ones at random for the settling reward
+- Mechanical effects hook into `add_passive()` (e.g. `founding_bonus`) or the
+  relevant system directly (e.g. `frost_hardened` in `travel_to_world()`);
+  passives without a live system yet are recorded but inert until that system lands
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (6 of 10 implemented — 4 more TBD)
 
-| ID | Name | Effect |
-|----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
-| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
-| echo_listener | Echo Listener | Unlocks extra creature dialogue options |
-| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
-| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
-| dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| ID | Name | Effect | Status |
+|----|------|--------|--------|
+| founding_bonus | Founding Bonus | +5 max fuel on grant | ✅ mechanical |
+| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel | ✅ mechanical |
+| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens | recorded (no specimen-yield system yet) |
+| echo_listener | Echo Listener | Unlocks extra creature dialogue options | recorded (no dialogue system yet) |
+| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens | recorded (no specimen system yet) |
+| dust_walker | Dust Walker | Desert worlds never trigger forced combat | recorded (no combat system yet) |
+| *(4 more TBD)* | | | |
 
 ---
 
@@ -122,6 +129,7 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
   "specimens": [],
   "credits": 0,
   "fuel": 100,
+  "max_fuel": 100,
   "settled_worlds": [
     { "id": "ardent_shore", "vessel_name": "Vessel of Ardent Shore" }
   ]

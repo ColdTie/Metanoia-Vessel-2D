@@ -290,25 +290,80 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
+	_show_passive_choice(world)
+
+
+func _show_passive_choice(world: Dictionary) -> void:
+	var choices: Array = GameState.get_passive_choices(3)
+	if choices.is_empty():
+		_finish_settle(world, {})
+		return
+
+	var layer := CanvasLayer.new()
+	layer.name = "PassiveChoiceLayer"
+	layer.layer = 10
+	add_child(layer)
+
+	var dim := ColorRect.new()
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.0, 0.0, 0.0, 0.65)
+	layer.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(420.0, 0.0)
+	center.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	panel.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Choose a passive for " + world["vessel_name"]
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(title)
+	vbox.add_child(HSeparator.new())
+
+	for choice in choices:
+		var btn := Button.new()
+		btn.text = "%s\n%s" % [choice["name"], choice["desc"]]
+		btn.custom_minimum_size = Vector2(0.0, 56.0)
+		btn.pressed.connect(func(): _on_passive_chosen(world, choice, layer))
+		vbox.add_child(btn)
+
+
+func _on_passive_chosen(world: Dictionary, choice: Dictionary, layer: CanvasLayer) -> void:
+	layer.queue_free()
+	_finish_settle(world, choice)
+
+
+func _finish_settle(world: Dictionary, passive: Dictionary) -> void:
+	if not passive.is_empty():
+		GameState.add_passive({
+			"id": passive["id"],
+			"name": passive["name"],
+			"desc": passive["desc"],
+			"source": world["name"],
+		})
+
 	_refresh_status()
+
+	var reward_line: String
+	if not passive.is_empty():
+		reward_line = "\n\n[color=#aaffaa]Passive gained: " + passive["name"] + "[/color]"
+	else:
+		reward_line = "\n\n[color=#aaffaa]All passives already collected.[/color]"
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ reward_line
 
 	SaveLoad.save_game()
 
