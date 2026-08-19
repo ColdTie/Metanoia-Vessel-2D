@@ -8,6 +8,8 @@ const STAR_SPEEDS: Array = [12.0, 28.0, 55.0]
 const STAR_COUNTS: Array = [120, 70, 35]
 const STAR_SPAN_W: float = 2560.0   # double viewport width for seamless wrap
 
+const PassiveSelectScene := preload("res://scenes/ui/passive_select.tscn")
+
 var _star_layers: Array = []
 var _star_root: Node2D
 
@@ -20,6 +22,7 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _ui_root: Control
 
 var _selected_world_id: String = ""
 
@@ -96,6 +99,7 @@ func _build_ui() -> void:
 	root.name = "UIRoot"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(root)
+	_ui_root = root
 
 	_build_left_panel(root)
 	_build_right_panel(root)
@@ -289,26 +293,36 @@ func _on_settle_pressed() -> void:
 
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
-
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
+
+	var choices: Array = GameState.draw_passive_choices(3)
+	if choices.is_empty():
+		_finish_settle(world)
+		return
+
+	var overlay: Control = PassiveSelectScene.instantiate()
+	_ui_root.add_child(overlay)
+	overlay.setup(choices)
+	overlay.chosen.connect(func(passive: Dictionary): _on_passive_chosen(world, passive))
+
+
+func _on_passive_chosen(world: Dictionary, passive: Dictionary) -> void:
+	passive["source"] = world["name"]
+	GameState.add_passive(passive)
+	if passive.get("id", "") == "founding_bonus":
+		GameState.max_fuel += 5
+		GameState.refuel(5)
+	_finish_settle(world)
+
+
+func _finish_settle(world: Dictionary) -> void:
 	_populate_destinations()
 	_refresh_status()
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n[color=#aaffaa]A passive has been recorded.[/color]"
 
 	SaveLoad.save_game()
 
