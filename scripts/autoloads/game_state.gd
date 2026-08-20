@@ -16,6 +16,11 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Full passive pool — initialized in _ready(). Settling draws 3 unclaimed
+# entries from here for the choose-1-of-3 reward.
+# Each entry: {id, name, desc}
+var passive_roster: Array = []
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -23,6 +28,7 @@ signal credits_changed(amount: int)
 
 func _ready() -> void:
 	_build_world_catalog()
+	_build_passive_roster()
 
 
 func _build_world_catalog() -> void:
@@ -78,6 +84,37 @@ func _build_world_catalog() -> void:
 			"specimens": ["lens_fish", "tide_weaver"],
 		},
 	]
+
+
+func _build_passive_roster() -> void:
+	passive_roster = [
+		{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+		{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+		{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+		{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+		{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+		{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+		{"id": "keen_eyes", "name": "Keen Eyes", "desc": "Specimens show their rarity before you collect them."},
+		{"id": "quiet_hands", "name": "Quiet Hands", "desc": "Avoiding an encounter never costs fuel."},
+		{"id": "vessel_network", "name": "Vessel Network", "desc": "Settled Vessels refuel you twice as fast."},
+		{"id": "steady_nerve", "name": "Steady Nerve", "desc": "Combat encounters deal less damage — pays off most in the void."},
+	]
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+func draw_passive_choices(count: int = 3) -> Array:
+	var available: Array = []
+	for p in passive_roster:
+		if not has_passive(p["id"]):
+			available.append(p)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func get_world_by_id(id: String) -> Dictionary:
