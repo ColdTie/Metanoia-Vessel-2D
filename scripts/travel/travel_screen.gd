@@ -290,25 +290,65 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
+	_show_passive_choice_dialog(world)
+
+
+func _show_passive_choice_dialog(world: Dictionary) -> void:
+	var choices: Array = GameState.draw_passive_choices(3)
+	if choices.is_empty():
+		_finish_settle(world, {})
+		return
+
+	var popup := PopupPanel.new()
+	popup.name = "PassiveChoicePopup"
+	add_child(popup)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	vbox.custom_minimum_size = Vector2(360.0, 0.0)
+	popup.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Choose a Passive"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	vbox.add_child(HSeparator.new())
+
+	for passive in choices:
+		var btn := Button.new()
+		btn.text = "%s — %s" % [passive["name"], passive["desc"]]
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn.custom_minimum_size = Vector2(340.0, 50.0)
+		btn.pressed.connect(func():
+			popup.queue_free()
+			_finish_settle(world, passive)
+		)
+		vbox.add_child(btn)
+
+	popup.popup_centered()
+
+
+func _finish_settle(world: Dictionary, passive: Dictionary) -> void:
+	if not passive.is_empty():
+		passive["source"] = world["name"]
+		GameState.add_passive(passive)
+		if passive.get("id", "") == "founding_bonus":
+			GameState.max_fuel += 5
+			GameState.refuel(5)
 
 	_settle_button.visible = false
 	_populate_destinations()
 	_refresh_status()
 
+	var passive_note: String = \
+		"[color=#aaffaa]Passive gained: [b]%s[/b].[/color]" % passive["name"] \
+		if not passive.is_empty() \
+		else "[color=#aaaaaa]No new passives were available.[/color]"
+
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n" + passive_note
 
 	SaveLoad.save_game()
 
