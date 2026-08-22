@@ -20,6 +20,57 @@ signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
 
+# General passive roster for the choose-1-of-3 settle reward.
+# "founding_bonus" is excluded — it is granted automatically on the very
+# first settlement rather than offered as a choice.
+const PASSIVE_ROSTER: Array = [
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+	{
+		"id": "warm_current",
+		"name": "Warm Current",
+		"desc": "Temperate worlds grant +2 bonus fuel on arrival.",
+	},
+	{
+		"id": "keen_eye",
+		"name": "Keen Eye",
+		"desc": "Improves the odds of finding rare specimens while exploring.",
+	},
+	{
+		"id": "steady_hand",
+		"name": "Steady Hand",
+		"desc": "Combat encounters cost less fuel when they happen.",
+	},
+	{
+		"id": "void_ward",
+		"name": "Void Ward",
+		"desc": "Blunts the hazards of the void/black-hole endgame.",
+	},
+]
+
 
 func _ready() -> void:
 	_build_world_catalog()
@@ -109,6 +160,22 @@ func travel_to_world(world_id: String) -> bool:
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func has_passive(id: String) -> bool:
+	for passive in passives:
+		if passive.get("id", "") == id:
+			return true
+	return false
+
+
+func get_passive_choices(count: int = 3) -> Array:
+	var pool: Array = []
+	for entry in PASSIVE_ROSTER:
+		if not has_passive(entry["id"]):
+			pool.append(entry)
+	pool.shuffle()
+	return pool.slice(0, min(count, pool.size()))
 
 
 func add_passive(passive: Dictionary) -> void:

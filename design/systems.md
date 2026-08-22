@@ -46,7 +46,10 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**: the very first settlement always grants **Founding Bonus**
+  automatically (no choice). Every settlement after that presents a
+  choose-1-of-3 draw from `GameState.PASSIVE_ROSTER` (excluding passives
+  already owned), shown as an in-code overlay in `travel_screen.gd`
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -60,7 +63,13 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (implemented — 10 needed for void unlock)
+
+`founding_bonus` is granted automatically on the first settlement. The rest
+live in `GameState.PASSIVE_ROSTER` and are offered via choose-1-of-3 on every
+settlement after the first. Reaching 10 total passives (roster alone tops out
+at 9 — the remaining 1+ must come from missions/rare finds, still TODO) is
+what triggers the void unlock check.
 
 | ID | Name | Effect |
 |----|------|--------|
@@ -70,7 +79,10 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| warm_current | Warm Current | Temperate worlds grant +2 bonus fuel on arrival |
+| keen_eye | Keen Eye | Improves odds of finding rare specimens while exploring |
+| steady_hand | Steady Hand | Combat encounters cost less fuel when they happen |
+| void_ward | Void Ward | Blunts the hazards of the void/black-hole endgame |
 
 ---
 
@@ -138,5 +150,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | inline overlay in `scripts/travel/travel_screen.gd` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
