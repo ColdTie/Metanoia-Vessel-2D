@@ -16,6 +16,11 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Pool of passives offered as choose-1-of-3 rewards on the 2nd+ settlement.
+# founding_bonus is not in this pool — it's always granted on the 1st settlement.
+# Each entry: {id, name, desc}
+var passive_pool: Array = []
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -23,6 +28,7 @@ signal credits_changed(amount: int)
 
 func _ready() -> void:
 	_build_world_catalog()
+	_build_passive_pool()
 
 
 func _build_world_catalog() -> void:
@@ -80,6 +86,53 @@ func _build_world_catalog() -> void:
 	]
 
 
+func _build_passive_pool() -> void:
+	passive_pool = [
+		{
+			"id": "root_knowledge",
+			"name": "Root Knowledge",
+			"desc": "Jungle worlds yield extra specimens.",
+		},
+		{
+			"id": "echo_listener",
+			"name": "Echo Listener",
+			"desc": "Unlocks extra creature dialogue options.",
+		},
+		{
+			"id": "frost_hardened",
+			"name": "Frost Hardened",
+			"desc": "Ice-world travel costs 1 less fuel.",
+		},
+		{
+			"id": "tide_reader",
+			"name": "Tide Reader",
+			"desc": "Ocean worlds reveal hidden specimens.",
+		},
+		{
+			"id": "dust_walker",
+			"name": "Dust Walker",
+			"desc": "Desert worlds never trigger forced combat.",
+		},
+	]
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+# Draws up to `count` distinct passives from the pool the player doesn't have yet.
+func get_passive_choices(count: int = 3) -> Array:
+	var available: Array = []
+	for p in passive_pool:
+		if not has_passive(p["id"]):
+			available.append(p)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
+
+
 func get_world_by_id(id: String) -> Dictionary:
 	for world in world_catalog:
 		if world["id"] == id:
@@ -98,11 +151,22 @@ func get_current_world_data() -> Dictionary:
 	return get_world_by_name(current_world)
 
 
+# Distance cost adjusted for passives (e.g. Frost Hardened discounts ice travel).
+func get_travel_cost(world_id: String) -> int:
+	var world := get_world_by_id(world_id)
+	if world.is_empty():
+		return 0
+	var cost: int = world.get("distance", 0)
+	if world.get("type", "") == "ice" and has_passive("frost_hardened"):
+		cost = max(cost - 1, 0)
+	return cost
+
+
 func travel_to_world(world_id: String) -> bool:
 	var world := get_world_by_id(world_id)
 	if world.is_empty():
 		return false
-	var cost: int = world.get("distance", 0)
+	var cost := get_travel_cost(world_id)
 	if fuel < cost:
 		return false
 	fuel -= cost
