@@ -4,6 +4,24 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Full passive roster (10) — drawn 3-at-a-time as settle rewards.
+# Only founding_bonus has a wired numeric effect so far; the rest are
+# recorded for flavor/future systems (specimens, encounters) that don't
+# exist yet. Combat-flavored passives (dust_walker, void_ward) pay off
+# mainly in the void/black-hole endgame per design/systems.md.
+const PASSIVE_POOL: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+	{"id": "keen_eye", "name": "Keen Eye", "desc": "Collected specimens sell for more credits."},
+	{"id": "swift_hull", "name": "Swift Hull", "desc": "All travel costs 1 less fuel (minimum 1)."},
+	{"id": "diplomat", "name": "Diplomat", "desc": "Hostile creatures more often offer a talk option."},
+	{"id": "void_ward", "name": "Void Ward", "desc": "Softens harm within the void. Full effect awaits the void endgame design."},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -109,6 +127,17 @@ func travel_to_world(world_id: String) -> bool:
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func draw_passive_choices(count: int = 3) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+	var available: Array = PASSIVE_POOL.filter(
+		func(p): return not owned_ids.has(p["id"])
+	)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func add_passive(passive: Dictionary) -> void:
