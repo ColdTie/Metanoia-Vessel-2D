@@ -46,7 +46,13 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**: ✅ implemented (`travel_screen.gd`). The player's first-ever
+  settlement grants Founding Bonus automatically, no choice. Every settlement
+  after that draws 3 random passives (not yet owned, excluding Founding Bonus)
+  from `GameState.PASSIVE_ROSTER` via `draw_passive_choices()` and shows a
+  choose-1-of-3 popup; the drawn passive is applied through `_finish_settle()`.
+  If the roster is exhausted (all 10 owned), settling still founds the Vessel
+  but awards no further passive.
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -59,8 +65,12 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Stored in `GameState.passives` array
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
+- Full pool lives in `GameState.PASSIVE_ROSTER` (10 entries — see below).
+  `draw_passive_choices(3)` returns up to 3 random not-yet-owned entries
+  (excluding `founding_bonus`, which is granted automatically on the first
+  settlement rather than offered in a draw)
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 total — matches `MAX_PASSIVES`)
 
 | ID | Name | Effect |
 |----|------|--------|
@@ -70,7 +80,16 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| warm_current | Warm Current | Temperate worlds refill 2 extra fuel on arrival |
+| star_cartographer | Star Cartographer | Distance/specimens revealed for every world, even unvisited |
+| steady_hands | Steady Hands | Combat encounters offer an extra de-escalation option |
+| deep_anchor | Deep Anchor | Vessels refuel you fully instead of partially |
+
+Only `founding_bonus` (max fuel) is currently wired to a mechanical effect;
+the rest are recorded and displayed but not yet applied in gameplay logic —
+same placeholder status they've had since first listed. None of the roster
+ties into the void/black-hole endgame; see the open replicator question below
+before any passive is designed to matter there specifically.
 
 ---
 
@@ -138,5 +157,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | built inline in `travel_screen.gd` (`_build_passive_popup`) | ✅ v1 — no separate scene file |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |

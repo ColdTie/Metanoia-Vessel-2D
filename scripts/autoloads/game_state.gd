@@ -4,6 +4,34 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Full pool a settle draw pulls from. 10 entries — exactly MAX_PASSIVES, so
+# a player who is offered and takes one at every settlement lands the void
+# check on the settlement that exhausts the roster. founding_bonus is never
+# offered in a draw; it is granted automatically on the player's first
+# settlement (see travel_screen.gd _on_settle_pressed).
+const PASSIVE_ROSTER: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus",
+		"desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat."},
+	{"id": "warm_current", "name": "Warm Current",
+		"desc": "Temperate worlds refill 2 extra fuel when you arrive."},
+	{"id": "star_cartographer", "name": "Star Cartographer",
+		"desc": "Distance and specimens are revealed for every world, even unvisited ones."},
+	{"id": "steady_hands", "name": "Steady Hands",
+		"desc": "Combat encounters offer an extra de-escalation option."},
+	{"id": "deep_anchor", "name": "Deep Anchor",
+		"desc": "Vessels refuel you fully instead of partially."},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -109,6 +137,22 @@ func travel_to_world(world_id: String) -> bool:
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+func draw_passive_choices(count: int = 3) -> Array:
+	var available: Array = []
+	for entry in PASSIVE_ROSTER:
+		if entry["id"] != "founding_bonus" and not has_passive(entry["id"]):
+			available.append(entry)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func add_passive(passive: Dictionary) -> void:
