@@ -45,8 +45,15 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO); vessel name currently
+  defaults to "Vessel of {world name}"
+- **Reward flow**:
+  - First settlement ever: grants `founding_bonus` automatically (+5 max fuel)
+  - Every settlement after that: draws 3 passives from `GameState.passive_pool`
+    (excluding already-owned ones) and the player picks 1 via an in-scene
+    overlay built by `travel_screen.gd` (`_show_passive_choice`). If fewer
+    than 3 remain unowned, it draws what's left; if none remain, settling
+    just confirms with no reward.
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -56,15 +63,21 @@ Each world carries:
 
 Persistent bonuses collected by settling, completing missions, and rare finds.
 
-- Stored in `GameState.passives` array
+- Stored in `GameState.passives` array; each entry is `{ id, name, desc, source }`
+- The 5 non-founding passives below live in `GameState.passive_pool` as
+  `{ id, name, desc }` (no `source` — that's stamped on with the settled
+  world's name when the player picks one)
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
-- Each passive is `{ id, name, desc, source }` dict
+- **Mechanical effects are not wired up yet** except `founding_bonus`'s
+  +5 max fuel, applied directly in `travel_screen.gd`. The others are
+  recorded as data only for now (their listed effects are the design intent
+  to implement once exploration/travel/combat systems exist to hook into)
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 needed for void unlock)
 
 | ID | Name | Effect |
 |----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
+| founding_bonus | Founding Bonus | First settlement — +5 max fuel (wired up) |
 | root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
 | echo_listener | Echo Listener | Unlocks extra creature dialogue options |
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
@@ -138,5 +151,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | inline overlay in `travel_screen.gd` | ✅ v1 (dedicated scene file still TODO if it needs reuse elsewhere) |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |

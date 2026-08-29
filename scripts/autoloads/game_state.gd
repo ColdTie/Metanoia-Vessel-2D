@@ -11,10 +11,16 @@ var specimens: Array = []         # Array of {id, world_id, name}
 var credits: int = 0
 var fuel: int = 100
 var max_fuel: int = 100
+var founded_first_vessel: bool = false  # first settlement grants founding_bonus automatically
 
 # World catalog — initialized in _ready(); mutated when worlds are settled.
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
+
+# Candidate passives for the choose-1-of-3 settling reward (all settlements
+# after the first). Each entry: {id, name, desc}. "founding_bonus" is granted
+# separately on first settlement and is not part of this pool.
+var passive_pool: Array = []
 
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
@@ -23,6 +29,7 @@ signal credits_changed(amount: int)
 
 func _ready() -> void:
 	_build_world_catalog()
+	_build_passive_pool()
 
 
 func _build_world_catalog() -> void:
@@ -78,6 +85,53 @@ func _build_world_catalog() -> void:
 			"specimens": ["lens_fish", "tide_weaver"],
 		},
 	]
+
+
+func _build_passive_pool() -> void:
+	passive_pool = [
+		{
+			"id": "root_knowledge",
+			"name": "Root Knowledge",
+			"desc": "Jungle worlds yield extra specimens.",
+		},
+		{
+			"id": "echo_listener",
+			"name": "Echo Listener",
+			"desc": "Unlocks extra creature dialogue options.",
+		},
+		{
+			"id": "frost_hardened",
+			"name": "Frost Hardened",
+			"desc": "Ice-world travel costs 1 less fuel.",
+		},
+		{
+			"id": "tide_reader",
+			"name": "Tide Reader",
+			"desc": "Ocean worlds reveal hidden specimens.",
+		},
+		{
+			"id": "dust_walker",
+			"name": "Dust Walker",
+			"desc": "Desert worlds never trigger forced combat.",
+		},
+	]
+
+
+## Draws up to `count` passives the player doesn't already own, for the
+## choose-1-of-3 settling reward. May return fewer than `count` once the
+## pool runs low.
+func draw_passive_options(count: int = 3) -> Array:
+	var owned_ids := {}
+	for p in passives:
+		owned_ids[p.get("id", "")] = true
+
+	var candidates: Array = []
+	for p in passive_pool:
+		if not owned_ids.has(p["id"]):
+			candidates.append(p)
+
+	candidates.shuffle()
+	return candidates.slice(0, min(count, candidates.size()))
 
 
 func get_world_by_id(id: String) -> Dictionary:

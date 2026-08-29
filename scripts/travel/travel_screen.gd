@@ -20,6 +20,7 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _ui_root: Control
 
 var _selected_world_id: String = ""
 
@@ -96,6 +97,7 @@ func _build_ui() -> void:
 	root.name = "UIRoot"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(root)
+	_ui_root = root
 
 	_build_left_panel(root)
 	_build_right_panel(root)
@@ -290,26 +292,77 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
 	_refresh_status()
 
+	if not GameState.founded_first_vessel:
+		# First settlement grants the founding passive directly; every
+		# settlement after this one draws from the choose-1-of-3 pool.
+		GameState.founded_first_vessel = true
+		GameState.add_passive({
+			"id": "founding_bonus",
+			"name": "Founding Bonus",
+			"desc": "The act of founding grants clarity. +5 max fuel.",
+			"source": world["name"],
+		})
+		GameState.max_fuel += 5
+		GameState.refuel(5)
+		_refresh_status()
+		_show_settle_message(world, "A passive has been recorded: Founding Bonus.")
+		SaveLoad.save_game()
+		return
+
+	var options := GameState.draw_passive_options(3)
+	if options.is_empty():
+		_show_settle_message(world, "No new passives available to claim right now.")
+		SaveLoad.save_game()
+	else:
+		_show_settle_message(world, "Choose a passive below.")
+		_show_passive_choice(world, options)
+
+
+func _show_settle_message(world: Dictionary, note: String) -> void:
+	_world_name_label.text = world["name"]
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n[color=#aaffaa]" + note + "[/color]"
 
+
+func _show_passive_choice(world: Dictionary, options: Array) -> void:
+	var overlay := PanelContainer.new()
+	overlay.name = "PassiveChoiceOverlay"
+	overlay.set_anchors_preset(Control.PRESET_CENTER)
+	overlay.custom_minimum_size = Vector2(440.0, 0.0)
+	_ui_root.add_child(overlay)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	overlay.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Choose a Passive"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	vbox.add_child(HSeparator.new())
+
+	for opt in options:
+		var btn := Button.new()
+		btn.text = "%s\n%s" % [opt["name"], opt["desc"]]
+		btn.custom_minimum_size = Vector2(0.0, 48.0)
+		var passive: Dictionary = opt
+		btn.pressed.connect(func(): _on_passive_choice_selected(world, passive, overlay))
+		vbox.add_child(btn)
+
+
+func _on_passive_choice_selected(world: Dictionary, passive: Dictionary, overlay: Control) -> void:
+	var granted := passive.duplicate()
+	granted["source"] = world["name"]
+	GameState.add_passive(granted)
+	overlay.queue_free()
+	_refresh_status()
+	_show_settle_message(world, "You gained: " + granted["name"] + ".")
 	SaveLoad.save_game()
 
 
