@@ -290,25 +290,82 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
+	var choices := GameState.get_passive_choices(3)
+	if choices.is_empty():
+		_finish_settle(world)
+	else:
+		_show_passive_choice(world, choices)
 
+
+func _show_passive_choice(world: Dictionary, choices: Array) -> void:
+	var overlay := CanvasLayer.new()
+	overlay.name = "PassiveChoiceOverlay"
+	overlay.layer = 10
+	add_child(overlay)
+
+	var dim := ColorRect.new()
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.75)
+	overlay.add_child(dim)
+
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.custom_minimum_size = Vector2(560.0, 320.0)
+	panel.position = -panel.custom_minimum_size / 2.0
+	dim.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	panel.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Choose a Passive for " + world.get("vessel_name", world.get("name", ""))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(title)
+	vbox.add_child(HSeparator.new())
+
+	for choice in choices:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		vbox.add_child(row)
+
+		var btn := Button.new()
+		btn.text = choice["name"]
+		btn.custom_minimum_size = Vector2(160.0, 48.0)
+		row.add_child(btn)
+
+		var desc := Label.new()
+		desc.text = choice.get("desc", "")
+		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(desc)
+
+		btn.pressed.connect(func():
+			overlay.queue_free()
+			_on_passive_chosen(world, choice)
+		)
+
+
+func _on_passive_chosen(world: Dictionary, choice: Dictionary) -> void:
+	GameState.add_passive({
+		"id": choice["id"],
+		"name": choice["name"],
+		"desc": choice.get("desc", ""),
+		"source": world.get("name", ""),
+	})
+	_finish_settle(world)
+
+
+func _finish_settle(world: Dictionary) -> void:
 	_settle_button.visible = false
 	_populate_destinations()
 	_refresh_status()
 
 	_world_desc_label.text = \
-		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
+		"You have founded [b]" + world.get("vessel_name", "") + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n[color=#aaffaa]A passive has been recorded.[/color]"
 
 	SaveLoad.save_game()
 
