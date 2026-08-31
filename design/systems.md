@@ -45,8 +45,13 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO)
+- **Reward flow**:
+  - First settlement ever: grants Founding Bonus automatically, no choice
+  - Every settlement after: choose 1 of 3 randomly drawn passives, via
+    `scenes/ui/passive_select.tscn` — a dimmed modal listing name + desc
+    per option, resolved by `GameState.draw_passive_choices()`
+  - If the pool has no unowned passives left, settling grants none
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -58,19 +63,29 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 
 - Stored in `GameState.passives` array
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
-- Each passive is `{ id, name, desc, source }` dict
+- Each passive is `{ id, name, desc, source }` dict (`source` optional)
+- Drawable pool lives in `GameState.passive_pool`; `draw_passive_choices(n)`
+  returns `n` random passives from the pool the player doesn't already own
+  (used by the settling reward flow above)
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 total — founding_bonus + 9-entry drawable pool)
 
 | ID | Name | Effect |
 |----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
+| founding_bonus | Founding Bonus | First settlement — +5 max fuel (not in draw pool) |
 | root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
 | echo_listener | Echo Listener | Unlocks extra creature dialogue options |
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| temperate_kinship | Temperate Kinship | Temperate worlds refill +3 fuel on arrival |
+| deep_calm | Deep Calm | Hostile creatures always offer a talk option first |
+| keen_trader | Keen Trader | Selling plants and info yields 15% more credits |
+| steady_hand | Steady Hand | Combat encounters never end in permanent specimen loss |
+
+Effects above are recorded as passive data now; the systems that read them
+(travel cost, encounters, trading) are still TODO and will consult these
+flags once built.
 
 ---
 
@@ -138,5 +153,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |

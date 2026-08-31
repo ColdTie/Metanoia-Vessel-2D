@@ -7,11 +7,13 @@ extends Control
 const STAR_SPEEDS: Array = [12.0, 28.0, 55.0]
 const STAR_COUNTS: Array = [120, 70, 35]
 const STAR_SPAN_W: float = 2560.0   # double viewport width for seamless wrap
+const PASSIVE_SELECT_SCENE := preload("res://scenes/ui/passive_select.tscn")
 
 var _star_layers: Array = []
 var _star_root: Node2D
 
 # UI node refs
+var _ui_root: Control
 var _location_label: Label
 var _fuel_label: Label
 var _passives_label: Label
@@ -96,6 +98,7 @@ func _build_ui() -> void:
 	root.name = "UIRoot"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(root)
+	_ui_root = root
 
 	_build_left_panel(root)
 	_build_right_panel(root)
@@ -287,28 +290,52 @@ func _on_settle_pressed() -> void:
 	if world.get("settled", false):
 		return
 
+	var is_first_settlement := not _any_world_settled()
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
-
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
+
+	if is_first_settlement:
+		GameState.add_passive({
+			"id": "founding_bonus",
+			"name": "Founding Bonus",
+			"desc": "The act of founding grants clarity. +5 max fuel.",
+			"source": world["name"],
+		})
+		GameState.max_fuel += 5
+		GameState.refuel(5)
+		_finish_settle(world, "A passive has been recorded: Founding Bonus.")
+		return
+
+	var choices := GameState.draw_passive_choices(3)
+	if choices.is_empty():
+		_finish_settle(world, "No new passives remain to award.")
+		return
+
+	var dialog: Control = PASSIVE_SELECT_SCENE.instantiate()
+	_ui_root.add_child(dialog)
+	dialog.setup(choices)
+	dialog.option_chosen.connect(func(passive: Dictionary):
+		GameState.add_passive(passive)
+		_finish_settle(world, "You chose [b]" + passive["name"] + "[/b].")
+	)
+
+
+func _any_world_settled() -> bool:
+	for world in GameState.world_catalog:
+		if world.get("settled", false):
+			return true
+	return false
+
+
+func _finish_settle(world: Dictionary, message: String) -> void:
 	_populate_destinations()
 	_refresh_status()
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n[color=#aaffaa]" + message + "[/color]"
 
 	SaveLoad.save_game()
 
