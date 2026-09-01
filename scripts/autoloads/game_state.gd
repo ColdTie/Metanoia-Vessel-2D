@@ -4,6 +4,43 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Passive roster. "founding_bonus" is special-cased: it is always the reward
+# for a player's first settlement anywhere. All other entries are drawn for
+# the choose-1-of-3 picker on later settlements. Effects beyond
+# founding_bonus's +5 max fuel are not yet mechanically wired (TODO).
+const PASSIVE_ROSTER: Array = [
+	{
+		"id": "founding_bonus",
+		"name": "Founding Bonus",
+		"desc": "The act of founding grants clarity. +5 max fuel.",
+	},
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -109,6 +146,35 @@ func travel_to_world(world_id: String) -> bool:
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+func get_passive_definition(id: String) -> Dictionary:
+	for p in PASSIVE_ROSTER:
+		if p["id"] == id:
+			return p
+	return {}
+
+
+func get_settle_reward_choices() -> Array:
+	# Random 3 (or fewer, if the roster is running out) non-founding
+	# passives the player doesn't already own — used for the choose-1-of-3
+	# settling reward picker on every settlement after the first.
+	var pool: Array = []
+	for p in PASSIVE_ROSTER:
+		if p["id"] == "founding_bonus":
+			continue
+		if has_passive(p["id"]):
+			continue
+		pool.append(p)
+	pool.shuffle()
+	return pool.slice(0, min(3, pool.size()))
 
 
 func add_passive(passive: Dictionary) -> void:

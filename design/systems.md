@@ -46,7 +46,15 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**:
+  - First settlement anywhere always grants **Founding Bonus** (+5 max fuel) automatically
+  - Every settlement after that offers a **choose-1-of-3** picker: 3 random
+    passives drawn from the roster (excluding ones already owned and
+    Founding Bonus itself), player clicks one to claim it
+  - If the roster runs dry (all remaining passives already owned), settling
+    just records the Vessel with no reward
+  - Implemented inline as a modal overlay in `travel_screen.gd`
+    (`_show_passive_choice_overlay`) — no separate scene file
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -59,6 +67,11 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Stored in `GameState.passives` array
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
+- Definitions live in `GameState.PASSIVE_ROSTER`; `founding_bonus` is
+  special-cased (see Settling above), the rest feed the choose-1-of-3 picker
+- Only `founding_bonus`'s effect (+5 max fuel) is mechanically wired so far;
+  the other roster effects (jungle/ice/ocean/desert bonuses) are recorded
+  but not yet hooked into travel/exploration/combat systems — TODO
 
 ### Passive Roster (planned — 10 needed for void unlock)
 
@@ -138,5 +151,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | inline overlay in `scripts/travel/travel_screen.gd` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
