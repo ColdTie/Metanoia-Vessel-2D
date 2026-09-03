@@ -45,8 +45,13 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO)
+- **First settlement only**: auto-grants `founding_bonus` (+5 max fuel)
+- **Reward flow** (every settlement, first included): `GameState.draw_passive_choices(3)`
+  draws 3 random not-yet-owned passives from `GameState.PASSIVE_POOL`; the
+  `passive_select` popup (`scenes/ui/passive_select.tscn`) shows them as cards,
+  player picks one, `GameState.add_passive()` grants it
+- If the pool is exhausted (all passives owned), no popup is shown
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -60,7 +65,12 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (complete — 10 of 10, void unlock ready)
+
+`founding_bonus` is granted automatically on first settlement. The other 9
+live in `GameState.PASSIVE_POOL` and are offered via the choose-1-of-3
+reward on every settlement. Reaching all 10 is exactly `MAX_PASSIVES`,
+so the void unlock check fires precisely when the roster is complete.
 
 | ID | Name | Effect |
 |----|------|--------|
@@ -70,7 +80,10 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| void_sense | Void Sense | Combat encounters near the void deal less damage |
+| diplomats_tongue | Diplomat's Tongue | Peaceful resolution option in otherwise-combat encounters |
+| salvagers_instinct | Salvager's Instinct | +20% credits when selling specimens or info |
+| keen_eye | Keen Eye | Reveals a hidden specimen on arrival at any world |
 
 ---
 
@@ -138,5 +151,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |

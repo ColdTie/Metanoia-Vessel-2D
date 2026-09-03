@@ -4,6 +4,22 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Passive pool for the choose-1-of-3 settling reward. "founding_bonus" is
+# granted automatically on a player's first settlement (see travel_screen.gd)
+# and is intentionally excluded here — these 9 plus founding_bonus complete
+# the 10-passive roster from design/systems.md.
+const PASSIVE_POOL: Array = [
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+	{"id": "void_sense", "name": "Void Sense", "desc": "Combat encounters near the void deal less damage."},
+	{"id": "diplomats_tongue", "name": "Diplomat's Tongue", "desc": "Unlocks a peaceful resolution option in otherwise-combat encounters."},
+	{"id": "salvagers_instinct", "name": "Salvager's Instinct", "desc": "+20% credits when selling specimens or info."},
+	{"id": "keen_eye", "name": "Keen Eye", "desc": "Reveals a hidden specimen on arrival at any world."},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -109,6 +125,20 @@ func travel_to_world(world_id: String) -> bool:
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func draw_passive_choices(count: int = 3) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+
+	var candidates: Array = []
+	for entry in PASSIVE_POOL:
+		if not owned_ids.has(entry["id"]):
+			candidates.append(entry)
+
+	candidates.shuffle()
+	return candidates.slice(0, min(count, candidates.size()))
 
 
 func add_passive(passive: Dictionary) -> void:
