@@ -16,6 +16,23 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Pool for the choose-1-of-3 settling reward. "founding_bonus" is granted
+# automatically on the player's first settlement and is not part of this pool.
+# Effects beyond founding_bonus's +5 max fuel are descriptive for now —
+# hooking them into gameplay (specimens, dialogue, travel cost, combat) is
+# future work as those systems land.
+const PASSIVE_POOL: Array = [
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+	{"id": "calm_hand", "name": "Calm Hand", "desc": "Combat encounters always offer a talk option first."},
+	{"id": "cargo_bay", "name": "Cargo Bay", "desc": "Selling specimens and info earns 10% more credits."},
+	{"id": "star_chart", "name": "Star Chart", "desc": "Travel to any settled Vessel costs 1 less fuel."},
+	{"id": "void_sense", "name": "Void Sense", "desc": "Reveals hazards before they trigger in the void endgame."},
+]
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -116,6 +133,24 @@ func add_passive(passive: Dictionary) -> void:
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
+
+
+func has_passive(id: String) -> bool:
+	for passive in passives:
+		if passive.get("id", "") == id:
+			return true
+	return false
+
+
+# Returns up to `count` passives from PASSIVE_POOL the player doesn't already
+# own, shuffled, for a choose-1-of-3 settling reward.
+func get_passive_choices(count: int = 3) -> Array:
+	var available: Array = []
+	for entry in PASSIVE_POOL:
+		if not has_passive(entry["id"]):
+			available.append(entry)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func _trigger_void_check() -> void:

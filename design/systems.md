@@ -46,7 +46,10 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**: first settlement ever grants Founding Bonus automatically;
+  every settlement after that opens a choose-1-of-3 overlay drawn from
+  `GameState.PASSIVE_POOL` (excludes passives already owned) — ✅ implemented
+  in `travel_screen.gd` (`_show_passive_choices` / `_on_passive_choice_picked`)
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -60,17 +63,25 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 needed for void unlock — full roster defined)
 
-| ID | Name | Effect |
-|----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
-| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
-| echo_listener | Echo Listener | Unlocks extra creature dialogue options |
-| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
-| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
-| dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| ID | Name | Effect | Source |
+|----|------|--------|--------|
+| founding_bonus | Founding Bonus | First settlement — +5 max fuel | automatic, first settle only |
+| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens | choose-1-of-3 pool |
+| echo_listener | Echo Listener | Unlocks extra creature dialogue options | choose-1-of-3 pool |
+| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel | choose-1-of-3 pool |
+| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens | choose-1-of-3 pool |
+| dust_walker | Dust Walker | Desert worlds never trigger forced combat | choose-1-of-3 pool |
+| calm_hand | Calm Hand | Combat encounters always offer a talk option first | choose-1-of-3 pool |
+| cargo_bay | Cargo Bay | Selling specimens/info earns 10% more credits | choose-1-of-3 pool |
+| star_chart | Star Chart | Travel to any settled Vessel costs 1 less fuel | choose-1-of-3 pool |
+| void_sense | Void Sense | Reveals hazards before they trigger in the void endgame | choose-1-of-3 pool |
+
+Effects beyond `founding_bonus`'s +5 max fuel are recorded on the passive but
+not yet wired into gameplay — each hooks in as its underlying system
+(specimens, dialogue, travel cost, combat, trade, void) lands. `void_sense`
+is deliberately vague pending the replicator/void design question below.
 
 ---
 
@@ -138,5 +149,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | built in-code, `travel_screen.gd` overlay | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
