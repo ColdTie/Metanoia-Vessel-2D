@@ -4,6 +4,41 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Pool that settling draws 3-of from (choose-1-of-3 reward flow).
+# Mechanical effects beyond founding_bonus are TODO — see design/systems.md.
+const PASSIVE_POOL: Array = [
+	{
+		"id": "founding_bonus",
+		"name": "Founding Bonus",
+		"desc": "The act of founding grants clarity. +5 max fuel.",
+	},
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -109,6 +144,18 @@ func travel_to_world(world_id: String) -> bool:
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func get_passive_choices(count: int = 3) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+	var available: Array = []
+	for p in PASSIVE_POOL:
+		if not owned_ids.has(p["id"]):
+			available.append(p)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func add_passive(passive: Dictionary) -> void:
