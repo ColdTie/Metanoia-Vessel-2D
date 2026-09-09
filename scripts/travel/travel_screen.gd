@@ -20,8 +20,10 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _passive_select: Control
 
 var _selected_world_id: String = ""
+var _pending_settle_world_id: String = ""
 
 
 func _ready() -> void:
@@ -99,6 +101,14 @@ func _build_ui() -> void:
 
 	_build_left_panel(root)
 	_build_right_panel(root)
+	_build_passive_select(root)
+
+
+func _build_passive_select(parent: Control) -> void:
+	var passive_select_scene := preload("res://scenes/ui/passive_select.tscn")
+	_passive_select = passive_select_scene.instantiate()
+	parent.add_child(_passive_select)
+	_passive_select.passive_selected.connect(_on_passive_selected)
 
 
 func _build_left_panel(parent: Control) -> void:
@@ -287,16 +297,23 @@ func _on_settle_pressed() -> void:
 	if world.get("settled", false):
 		return
 
+	_pending_settle_world_id = _selected_world_id
+	var choices := GameState.get_passive_choices(3)
+	_passive_select.open(choices)
+
+
+func _on_passive_selected(passive: Dictionary) -> void:
+	var world := GameState.get_world_by_id(_pending_settle_world_id)
+	_pending_settle_world_id = ""
+	if world.is_empty():
+		return
+
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
+	var granted := passive.duplicate()
+	granted["source"] = world["name"]
+	GameState.add_passive(granted)
 	GameState.max_fuel += 5
 	GameState.refuel(5)
 
@@ -307,8 +324,7 @@ func _on_settle_pressed() -> void:
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n[color=#aaffaa]Passive gained: " + granted.get("name", "") + "[/color]"
 
 	SaveLoad.save_game()
 

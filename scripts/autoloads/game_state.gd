@@ -16,6 +16,61 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Full passive roster (10, matches design/systems.md). Settling draws 3 of the
+# ones the player doesn't already have; the player picks one to keep.
+const PASSIVE_POOL: Array = [
+	{
+		"id": "founding_bonus",
+		"name": "Founding Bonus",
+		"desc": "The act of founding grants clarity. +5 max fuel.",
+	},
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+	{
+		"id": "temperate_tender",
+		"name": "Temperate Tender",
+		"desc": "Settled temperate worlds refill 2 extra fuel.",
+	},
+	{
+		"id": "specimen_sense",
+		"name": "Specimen Sense",
+		"desc": "Specimens are easier to spot while exploring.",
+	},
+	{
+		"id": "quiet_diplomat",
+		"name": "Quiet Diplomat",
+		"desc": "Talk outcomes with wary creatures succeed more often.",
+	},
+	{
+		"id": "deep_current",
+		"name": "Deep Current",
+		"desc": "Travel to any settled world costs 1 less fuel.",
+	},
+]
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -109,6 +164,20 @@ func travel_to_world(world_id: String) -> bool:
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func get_passive_choices(count: int = 3) -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+
+	var available: Array = []
+	for p in PASSIVE_POOL:
+		if not owned_ids.has(p["id"]):
+			available.append(p)
+
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func add_passive(passive: Dictionary) -> void:
