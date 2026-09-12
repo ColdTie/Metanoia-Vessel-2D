@@ -45,8 +45,13 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO), then chooses a passive
+- **Reward flow**: ✅ `GameState.draw_passive_choices(3)` draws up to 3 unowned
+  passives at random from `PASSIVE_POOL`; an inline overlay in
+  `travel_screen.gd` (`_offer_passive_choice` / `_on_passive_chosen`) lets the
+  player pick one, which is then granted via `GameState.add_passive()`. If
+  fewer than 3 unowned passives remain, only those are offered; if none
+  remain, settling still succeeds with no passive granted.
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -59,12 +64,16 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Stored in `GameState.passives` array
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
+- Drawable passives live in `GameState.PASSIVE_POOL`; only `founding_bonus`
+  has a real numeric effect wired up (+5 max fuel) — the rest are
+  descriptive placeholders until their systems (jungle specimens, dialogue,
+  ice travel cost, ocean specimens, desert combat) exist
 
 ### Passive Roster (planned — 10 needed for void unlock)
 
 | ID | Name | Effect |
 |----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
+| founding_bonus | Founding Bonus | Drawable at any settlement — +5 max fuel |
 | root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
 | echo_listener | Echo Listener | Unlocks extra creature dialogue options |
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
@@ -138,5 +147,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | inline overlay in `travel_screen.gd` (no separate scene) | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
