@@ -45,8 +45,14 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO)
+- **Reward flow**:
+  - First-ever settlement always grants `founding_bonus` automatically (+5 max fuel)
+  - Every settlement after that shows a choose-1-of-3 popup drawn from
+    `GameState.passive_pool`, excluding passives already owned; picking one
+    grants it via `GameState.add_passive()`
+  - If the pool is exhausted (no unowned passives left), settling still
+    founds the Vessel but grants no additional passive
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -59,6 +65,9 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Stored in `GameState.passives` array
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
+- Candidate passives (beyond the guaranteed `founding_bonus`) live in
+  `GameState.passive_pool`; `draw_passive_choices(3)` returns up to 3 unowned
+  ones at random for the settling choose-1-of-3 UI (see Settling & Vessels)
 
 ### Passive Roster (planned — 10 needed for void unlock)
 
