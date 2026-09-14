@@ -4,6 +4,37 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Drawable settling rewards (excludes founding_bonus, which is granted once
+# automatically on the player's first settlement — see _on_settle in
+# travel_screen.gd). Keep in sync with design/systems.md's Passive Roster.
+const PASSIVE_POOL: Array = [
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -135,6 +166,25 @@ func spend_credits(amount: int) -> bool:
 	credits -= amount
 	credits_changed.emit(credits)
 	return true
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+func draw_passive_choices(count: int = 3) -> Array:
+	# Returns up to `count` passives from PASSIVE_POOL the player doesn't
+	# already have, in random order. May return fewer once the pool is
+	# exhausted (or an empty array).
+	var available: Array = []
+	for p in PASSIVE_POOL:
+		if not has_passive(p["id"]):
+			available.append(p)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func add_specimen(specimen_id: String, world_id: String) -> void:
