@@ -12,6 +12,11 @@ var credits: int = 0
 var fuel: int = 100
 var max_fuel: int = 100
 
+# Passive pool — candidates not yet earned. Founding Bonus is granted
+# automatically on the first settle; every settle after that draws 3 of
+# these at random for a choose-1-of-3 pick.
+var passive_pool: Array = []
+
 # World catalog — initialized in _ready(); mutated when worlds are settled.
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
@@ -23,6 +28,7 @@ signal credits_changed(amount: int)
 
 func _ready() -> void:
 	_build_world_catalog()
+	_build_passive_pool()
 
 
 func _build_world_catalog() -> void:
@@ -78,6 +84,43 @@ func _build_world_catalog() -> void:
 			"specimens": ["lens_fish", "tide_weaver"],
 		},
 	]
+
+
+func _build_passive_pool() -> void:
+	# Founding Bonus is not in the pool — it is granted automatically on
+	# the first settle. These 9 fill the roster to 10 for the void unlock.
+	passive_pool = [
+		{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+		{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+		{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+		{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+		{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+		{"id": "keel_reinforced", "name": "Keel Reinforced", "desc": "Combat encounters deal less damage to your ship."},
+		{"id": "steady_hand", "name": "Steady Hand", "desc": "Talk outcomes with wary creatures trend more favorable."},
+		{"id": "deep_cache", "name": "Deep Cache", "desc": "Rare finds during exploration are more common."},
+		{"id": "long_burn", "name": "Long Burn", "desc": "+5 max fuel."},
+	]
+
+
+func draw_passive_choices(count: int = 3) -> Array:
+	var pool_copy: Array = passive_pool.duplicate()
+	pool_copy.shuffle()
+	return pool_copy.slice(0, min(count, pool_copy.size()))
+
+
+func grant_passive_from_pool(passive_id: String) -> bool:
+	for i in passive_pool.size():
+		if passive_pool[i]["id"] == passive_id:
+			var passive: Dictionary = passive_pool[i]
+			passive_pool.remove_at(i)
+			add_passive({
+				"id": passive["id"],
+				"name": passive["name"],
+				"desc": passive["desc"],
+				"source": current_world,
+			})
+			return true
+	return false
 
 
 func get_world_by_id(id: String) -> Dictionary:

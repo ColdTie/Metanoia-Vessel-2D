@@ -45,8 +45,12 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO; currently auto-named "Vessel of X")
+- **Reward flow**:
+  - First-ever settlement always grants **Founding Bonus** automatically
+  - Every settlement after that draws 3 random passives from `GameState.passive_pool`
+    and shows a choose-1-of-3 popup (`travel_screen.gd: _show_passive_choice_popup`)
+  - Picked passive is removed from the pool so it can't be drawn again
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -56,21 +60,30 @@ Each world carries:
 
 Persistent bonuses collected by settling, completing missions, and rare finds.
 
-- Stored in `GameState.passives` array
+- Stored in `GameState.passives` array (earned) and `GameState.passive_pool`
+  array (not yet earned; drawn from on settle, see Settling & Vessels)
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
-- Each passive is `{ id, name, desc, source }` dict
+- Each passive is `{ id, name, desc, source }` dict (pool entries omit `source`
+  until granted)
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 total — full roster needed for void unlock)
 
 | ID | Name | Effect |
 |----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
+| founding_bonus | Founding Bonus | First settlement — +5 max fuel (auto-granted, not in pool) |
 | root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
 | echo_listener | Echo Listener | Unlocks extra creature dialogue options |
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| keel_reinforced | Keel Reinforced | Combat encounters deal less damage to your ship |
+| steady_hand | Steady Hand | Talk outcomes with wary creatures trend more favorable |
+| deep_cache | Deep Cache | Rare finds during exploration are more common |
+| long_burn | Long Burn | +5 max fuel |
+
+Effects beyond Founding Bonus are currently flavor/data only — the mechanical
+hooks (combat damage reduction, dialogue unlocks, etc.) land with the systems
+they modify (combat, dialogue, exploration).
 
 ---
 
@@ -118,6 +131,7 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
   "version": 1,
   "current_world": "Ardent Shore",
   "passives": [],
+  "passive_pool": [],
   "ship_decorations": [],
   "specimens": [],
   "credits": 0,

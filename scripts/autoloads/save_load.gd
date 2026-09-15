@@ -8,6 +8,7 @@ func save_game() -> void:
 		"version": 1,
 		"current_world": GameState.current_world,
 		"passives": GameState.passives,
+		"passive_pool": GameState.passive_pool,
 		"ship_decorations": GameState.ship_decorations,
 		"specimens": GameState.specimens,
 		"credits": GameState.credits,
@@ -37,6 +38,7 @@ func load_game() -> bool:
 	var data: Dictionary = json.get_data()
 	GameState.current_world = data.get("current_world", "Ardent Shore")
 	GameState.passives = data.get("passives", [])
+	GameState.passive_pool = data.get("passive_pool", GameState.passive_pool)
 	GameState.ship_decorations = data.get("ship_decorations", [])
 	GameState.specimens = data.get("specimens", [])
 	GameState.credits = data.get("credits", 0)
