@@ -45,8 +45,12 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO; currently auto-named "Vessel of X")
+- **Reward flow**: first settlement ever grants Founding Bonus automatically;
+  every settlement (including the first) then offers a choose-1-of-3 draw
+  from `GameState.PASSIVE_POOL`, shown as a modal overlay on the travel screen
+- Draws exclude passives already owned; once the pool is exhausted, settling
+  grants no further passive (message shown instead)
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -60,7 +64,11 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 needed for void unlock)
+
+`founding_bonus` is granted automatically on the first settlement. The other
+9 live in `GameState.PASSIVE_POOL` and are offered via choose-1-of-3 on every
+settlement.
 
 | ID | Name | Effect |
 |----|------|--------|
@@ -70,7 +78,10 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| calm_diplomat | Calm Diplomat | Talk encounters always succeed on first attempt |
+| keen_scanner | Keen Scanner | World-scan info sells for more credits |
+| swift_currents | Swift Currents | Travel cost to revisited worlds -1 |
+| salvage_sense | Salvage Sense | Combat missions yield bonus credits from salvage |
 
 ---
 
@@ -138,5 +149,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | modal overlay in `travel_screen.gd` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |

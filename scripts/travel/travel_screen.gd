@@ -22,6 +22,10 @@ var _depart_button: Button
 var _settle_button: Button
 
 var _selected_world_id: String = ""
+var _pending_passive_source: String = ""
+
+var _passive_overlay: Control
+var _passive_options_box: HBoxContainer
 
 
 func _ready() -> void:
@@ -99,6 +103,7 @@ func _build_ui() -> void:
 
 	_build_left_panel(root)
 	_build_right_panel(root)
+	_build_passive_overlay(root)
 
 
 func _build_left_panel(parent: Control) -> void:
@@ -201,6 +206,46 @@ func _build_right_panel(parent: Control) -> void:
 	btn_row.add_child(_settle_button)
 
 
+func _build_passive_overlay(parent: Control) -> void:
+	_passive_overlay = Control.new()
+	_passive_overlay.name = "PassiveOverlay"
+	_passive_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_passive_overlay.visible = false
+	parent.add_child(_passive_overlay)
+
+	var dim := ColorRect.new()
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.0, 0.0, 0.0, 0.6)
+	_passive_overlay.add_child(dim)
+
+	var panel := PanelContainer.new()
+	panel.set_anchor(SIDE_LEFT,   0.5)
+	panel.set_anchor(SIDE_RIGHT,  0.5)
+	panel.set_anchor(SIDE_TOP,    0.5)
+	panel.set_anchor(SIDE_BOTTOM, 0.5)
+	panel.set_offset(SIDE_LEFT,   -320.0)
+	panel.set_offset(SIDE_RIGHT,  320.0)
+	panel.set_offset(SIDE_TOP,    -140.0)
+	panel.set_offset(SIDE_BOTTOM, 140.0)
+	_passive_overlay.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	panel.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Choose a Passive"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	vbox.add_child(HSeparator.new())
+
+	_passive_options_box = HBoxContainer.new()
+	_passive_options_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_passive_options_box.add_theme_constant_override("separation", 12)
+	_passive_options_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(_passive_options_box)
+
+
 func _make_label(text: String) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
@@ -280,6 +325,14 @@ func _on_depart_pressed() -> void:
 			+ "\n\n[color=red]Not enough fuel to depart.[/color]"
 
 
+func _count_settled_worlds() -> int:
+	var n := 0
+	for world in GameState.world_catalog:
+		if world.get("settled", false):
+			n += 1
+	return n
+
+
 func _on_settle_pressed() -> void:
 	var world := GameState.get_world_by_id(_selected_world_id)
 	if world.is_empty() or world["name"] != GameState.current_world:
@@ -287,18 +340,20 @@ func _on_settle_pressed() -> void:
 	if world.get("settled", false):
 		return
 
+	var is_first_settlement: bool = _count_settled_worlds() == 0
+
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
+	if is_first_settlement:
+		GameState.add_passive({
+			"id": "founding_bonus",
+			"name": "Founding Bonus",
+			"desc": "The act of founding grants clarity. +5 max fuel.",
+			"source": world["name"],
+		})
+		GameState.max_fuel += 5
+		GameState.refuel(5)
 
 	_settle_button.visible = false
 	_populate_destinations()
@@ -306,10 +361,42 @@ func _on_settle_pressed() -> void:
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ world.get("description", "")
 
+	var choices := GameState.get_passive_choices(3)
+	if choices.is_empty():
+		_world_desc_label.text += \
+			"\n\n[color=#aaffaa]No new passives remain to discover.[/color]"
+		SaveLoad.save_game()
+	else:
+		_pending_passive_source = world["name"]
+		_show_passive_choices(choices)
+
+
+func _show_passive_choices(choices: Array) -> void:
+	for child in _passive_options_box.get_children():
+		child.queue_free()
+
+	for choice in choices:
+		var btn := Button.new()
+		btn.text = choice["name"] + "\n\n" + choice["desc"]
+		btn.custom_minimum_size = Vector2(180.0, 160.0)
+		var picked: Dictionary = choice
+		btn.pressed.connect(func(): _on_passive_chosen(picked))
+		_passive_options_box.add_child(btn)
+
+	_passive_overlay.visible = true
+
+
+func _on_passive_chosen(passive: Dictionary) -> void:
+	var granted: Dictionary = passive.duplicate()
+	granted["source"] = _pending_passive_source
+	GameState.add_passive(granted)
+
+	_passive_overlay.visible = false
+	_refresh_status()
+	_world_desc_label.text += \
+		"\n\n[color=#aaffaa]Gained passive: " + granted["name"] + ".[/color]"
 	SaveLoad.save_game()
 
 
