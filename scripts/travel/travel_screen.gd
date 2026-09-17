@@ -20,6 +20,7 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _ui_root: Control
 
 var _selected_world_id: String = ""
 
@@ -96,6 +97,7 @@ func _build_ui() -> void:
 	root.name = "UIRoot"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(root)
+	_ui_root = root
 
 	_build_left_panel(root)
 	_build_right_panel(root)
@@ -290,15 +292,16 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
+	var is_first_settlement: bool = GameState.passives.is_empty()
+	if is_first_settlement:
+		GameState.add_passive({
+			"id": "founding_bonus",
+			"name": "Founding Bonus",
+			"desc": "The act of founding grants clarity. +5 max fuel.",
+			"source": world["name"],
+		})
+		GameState.max_fuel += 5
+		GameState.refuel(5)
 
 	_settle_button.visible = false
 	_populate_destinations()
@@ -306,12 +309,55 @@ func _on_settle_pressed() -> void:
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ world.get("description", "")
 
 	SaveLoad.save_game()
+	_offer_passive_choice(world["name"])
 
 
 func _on_world_changed(_new_world: String) -> void:
 	_refresh_status()
+
+
+# ── Passive Choice Popup ─────────────────────────────────────────────────────
+
+func _offer_passive_choice(world_name: String) -> void:
+	var choices: Array = GameState.draw_passive_choices(3)
+	if choices.is_empty():
+		return
+
+	var popup := PopupPanel.new()
+	popup.name = "PassiveChoicePopup"
+	popup.exclusive = true
+	_ui_root.add_child(popup)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	popup.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Choose a passive for " + world_name
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+	vbox.add_child(HSeparator.new())
+
+	for choice in choices:
+		var btn := Button.new()
+		btn.text = choice["name"] + "\n" + choice["desc"]
+		btn.custom_minimum_size = Vector2(300.0, 56.0)
+		btn.pressed.connect(func(): _on_passive_choice_picked(choice, world_name, popup))
+		vbox.add_child(btn)
+
+	popup.popup_centered(Vector2(340, 80 + choices.size() * 66))
+
+
+func _on_passive_choice_picked(choice: Dictionary, world_name: String, popup: PopupPanel) -> void:
+	GameState.add_passive({
+		"id": choice["id"],
+		"name": choice["name"],
+		"desc": choice["desc"],
+		"source": world_name,
+	})
+	SaveLoad.save_game()
+	_refresh_status()
+	popup.queue_free()
