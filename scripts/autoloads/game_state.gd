@@ -4,6 +4,41 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Full passive pool for the choose-1-of-3 settling reward. Roster is still
+# growing (see design/systems.md) — 6 of the planned 10 are defined here.
+const PASSIVE_ROSTER: Array = [
+	{
+		"id": "founding_bonus",
+		"name": "Founding Bonus",
+		"desc": "The act of founding grants clarity. +5 max fuel.",
+	},
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -116,6 +151,55 @@ func add_passive(passive: Dictionary) -> void:
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
+
+
+func get_passive_choices() -> Array:
+	var owned_ids: Array = []
+	for p in passives:
+		owned_ids.append(p.get("id", ""))
+
+	var available: Array = []
+	for def in PASSIVE_ROSTER:
+		if not owned_ids.has(def["id"]):
+			available.append(def)
+	available.shuffle()
+
+	var choices: Array = []
+	# First settlement always offers Founding Bonus as one of the three.
+	if passives.is_empty():
+		for def in available:
+			if def["id"] == "founding_bonus":
+				choices.append(def)
+				available.erase(def)
+				break
+
+	while choices.size() < 3 and not available.is_empty():
+		choices.append(available.pop_front())
+
+	return choices
+
+
+func grant_passive_by_id(passive_id: String, source: String) -> bool:
+	var def := {}
+	for candidate in PASSIVE_ROSTER:
+		if candidate["id"] == passive_id:
+			def = candidate
+			break
+	if def.is_empty():
+		return false
+
+	add_passive({
+		"id": def["id"],
+		"name": def["name"],
+		"desc": def["desc"],
+		"source": source,
+	})
+
+	if passive_id == "founding_bonus":
+		max_fuel += 5
+		refuel(5)
+
+	return true
 
 
 func _trigger_void_check() -> void:

@@ -46,7 +46,12 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**: ✅ choose 1 of 3 randomly drawn passives, offered via a popup
+  in `travel_screen.gd` right after settling. The first-ever settlement always
+  includes Founding Bonus as one of the three options; later settlements draw
+  from whatever's left in `GameState.PASSIVE_ROSTER` that the player doesn't
+  already own. If the roster runs dry (all remaining passives owned), no
+  choice is offered — settling still succeeds.
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -59,6 +64,9 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Stored in `GameState.passives` array
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
+- Full pool of grantable passives lives in `GameState.PASSIVE_ROSTER` (id/name/desc
+  only — only `founding_bonus` has a coded effect so far, `+5 max_fuel`; the rest
+  are recorded but their gameplay effects are still TODO)
 
 ### Passive Roster (planned — 10 needed for void unlock)
 
@@ -138,5 +146,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | built into `scenes/travel/travel_screen.tscn` (PopupPanel) | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
