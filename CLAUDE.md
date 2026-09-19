@@ -42,7 +42,7 @@ scripts/
 
 - **Travel**: fuel-gated, distance-cost per world. `GameState.travel_to_world(id)`
 - **Worlds**: catalogued in `GameState.world_catalog`, 5 worlds v1
-- **Settling**: marks world settled, adds placeholder passive (choose-1-of-3 TODO)
+- **Settling**: marks world settled; first settlement grants `founding_bonus` automatically, every settlement after offers a choose-1-of-3 passive modal
 - **Passives**: `GameState.passives`, max 10 → void unlock check
 - **Specimens**: collected during world exploration (TODO)
 - **Combat**: ~1/3 missions; almost never forced; rewards ≠ killing
