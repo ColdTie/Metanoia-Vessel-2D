@@ -45,8 +45,12 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO; currently auto-named "Vessel of X")
+- **Reward flow**:
+  - First settlement ever: auto-grants `founding_bonus` (+5 max fuel)
+  - Every settlement after: choose 1 of 3 randomly drawn, not-yet-owned
+    passives from `GameState.passive_pool`, via a popup built in
+    `travel_screen.gd::_show_passive_choice_popup()` (no separate scene)
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -60,7 +64,15 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (v1 — 10 total, matches void-unlock threshold)
+
+`founding_bonus` is granted automatically on the player's first settlement.
+The other 9 live in `GameState.passive_pool` and are offered as a
+choose-1-of-3 draw (see Settling & Vessels above) on every settlement after
+the first. Effect application beyond `founding_bonus` and `dust_walker`
+(forced-combat suppression, already true by default) is still TODO — these
+entries are the roster/flavor; wiring their mechanical effects into travel,
+exploration, and combat is future work.
 
 | ID | Name | Effect |
 |----|------|--------|
@@ -70,7 +82,10 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| warm_current | Warm Current | Temperate worlds refuel +5 extra fuel at Vessels |
+| keen_eye | Keen Eye | Specimens are easier to spot while exploring |
+| silver_tongue | Silver Tongue | Hostile creatures offer a talk option more often |
+| steady_hand | Steady Hand | Combat encounters go smoother; pays off most in the void |
 
 ---
 
@@ -138,5 +153,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | inline `PopupPanel` in `travel_screen.gd` | ✅ v1 (no separate scene) |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |

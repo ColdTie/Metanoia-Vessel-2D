@@ -16,6 +16,56 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Passive pool for choose-1-of-3 settling rewards (excludes founding_bonus,
+# which is granted automatically on the player's first settlement).
+var passive_pool: Array = [
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+	{
+		"id": "warm_current",
+		"name": "Warm Current",
+		"desc": "Temperate worlds refuel an extra 5 fuel at Vessels.",
+	},
+	{
+		"id": "keen_eye",
+		"name": "Keen Eye",
+		"desc": "Specimens are easier to spot while exploring.",
+	},
+	{
+		"id": "silver_tongue",
+		"name": "Silver Tongue",
+		"desc": "Hostile creatures offer a talk option more often.",
+	},
+	{
+		"id": "steady_hand",
+		"name": "Steady Hand",
+		"desc": "Combat encounters go smoother. Pays off most in the void.",
+	},
+]
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -109,6 +159,28 @@ func travel_to_world(world_id: String) -> bool:
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+func has_settled_any_world() -> bool:
+	for world in world_catalog:
+		if world.get("settled", false):
+			return true
+	return false
+
+
+# Draws up to `count` unique, not-yet-owned passives from the pool for a
+# choose-1-of-3 settling reward. May return fewer if the pool runs low.
+func draw_passive_choices(count: int = 3) -> Array:
+	var available: Array = passive_pool.filter(func(p): return not has_passive(p["id"]))
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func add_passive(passive: Dictionary) -> void:
