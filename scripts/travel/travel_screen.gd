@@ -287,8 +287,50 @@ func _on_settle_pressed() -> void:
 	if world.get("settled", false):
 		return
 
+	_show_vessel_naming_dialog(world)
+
+
+func _show_vessel_naming_dialog(world: Dictionary) -> void:
+	var default_name: String = "Vessel of " + world["name"]
+
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "Found a Vessel"
+	dialog.ok_button_text = "Found Vessel"
+	dialog.min_size = Vector2i(360, 150)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+
+	var label := Label.new()
+	label.text = "Name your Vessel on " + world["name"] + ":"
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(label)
+
+	var name_edit := LineEdit.new()
+	name_edit.text = default_name
+	name_edit.max_length = 40
+	name_edit.select_all_on_focus = true
+	vbox.add_child(name_edit)
+
+	dialog.add_child(vbox)
+
+	dialog.confirmed.connect(func():
+		var chosen: String = name_edit.text.strip_edges()
+		if chosen.is_empty():
+			chosen = default_name
+		_finalize_settle(world, chosen)
+	)
+	dialog.close_requested.connect(dialog.queue_free)
+	dialog.confirmed.connect(dialog.queue_free)
+
+	add_child(dialog)
+	dialog.popup_centered()
+	name_edit.grab_focus()
+
+
+func _finalize_settle(world: Dictionary, vessel_name: String) -> void:
 	world["settled"] = true
-	world["vessel_name"] = "Vessel of " + world["name"]
+	world["vessel_name"] = vessel_name
 
 	# Grant the founding passive (choose-1-of-3 UI is TODO)
 	GameState.add_passive({
@@ -305,7 +347,7 @@ func _on_settle_pressed() -> void:
 	_refresh_status()
 
 	_world_desc_label.text = \
-		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
+		"You have founded [b]" + vessel_name + "[/b].\n\n" \
 		+ world.get("description", "") \
 		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
 		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
