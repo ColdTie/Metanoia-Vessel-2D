@@ -4,6 +4,8 @@ extends Control
 # All UI is built programmatically so the .tscn stays trivially simple.
 # Three parallax star layers scroll right-to-left at different speeds.
 
+const PassiveSelect := preload("res://scripts/ui/passive_select.gd")
+
 const STAR_SPEEDS: Array = [12.0, 28.0, 55.0]
 const STAR_COUNTS: Array = [120, 70, 35]
 const STAR_SPAN_W: float = 2560.0   # double viewport width for seamless wrap
@@ -290,7 +292,18 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
+	_settle_button.visible = false
+	_populate_destinations()
+	_refresh_status()
+	_show_settled_message(world)
+
+	if GameState.passives.is_empty():
+		_grant_founding_bonus(world)
+	else:
+		_offer_passive_choice(world)
+
+
+func _grant_founding_bonus(world: Dictionary) -> void:
 	GameState.add_passive({
 		"id": "founding_bonus",
 		"name": "Founding Bonus",
@@ -299,18 +312,32 @@ func _on_settle_pressed() -> void:
 	})
 	GameState.max_fuel += 5
 	GameState.refuel(5)
-
-	_settle_button.visible = false
-	_populate_destinations()
 	_refresh_status()
+	SaveLoad.save_game()
 
+
+func _offer_passive_choice(world: Dictionary) -> void:
+	var choices: Array = GameState.draw_passive_choices(3)
+	if choices.is_empty():
+		SaveLoad.save_game()
+		return
+
+	var select := PassiveSelect.new()
+	select.setup(choices)
+	select.passive_chosen.connect(func(chosen: Dictionary):
+		var granted: Dictionary = chosen.duplicate()
+		granted["source"] = world["name"]
+		GameState.add_passive(granted)
+		_refresh_status()
+		SaveLoad.save_game()
+	)
+	add_child(select)
+
+
+func _show_settled_message(world: Dictionary) -> void:
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
-
-	SaveLoad.save_game()
+		+ world.get("description", "")
 
 
 func _on_world_changed(_new_world: String) -> void:
