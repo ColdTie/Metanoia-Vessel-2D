@@ -11,6 +11,38 @@ var specimens: Array = []         # Array of {id, world_id, name}
 var credits: int = 0
 var fuel: int = 100
 var max_fuel: int = 100
+var founded_first_vessel: bool = false  # Gates the one-time Founding Bonus passive
+
+# General settling reward pool — drawn 3-at-a-time for the choose-1-of-3 UI.
+# Founding Bonus is excluded: it is granted automatically on the player's
+# first-ever settlement instead of being drawn.
+const PASSIVE_POOL: Array = [
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+]
 
 # World catalog — initialized in _ready(); mutated when worlds are settled.
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
@@ -116,6 +148,24 @@ func add_passive(passive: Dictionary) -> void:
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+# Draws up to `count` unique passives from PASSIVE_POOL, excluding ones
+# already owned. Used to populate the choose-1-of-3 settling reward.
+func draw_passive_choices(count: int = 3) -> Array:
+	var available: Array = []
+	for p in PASSIVE_POOL:
+		if not has_passive(p["id"]):
+			available.append(p)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
 
 
 func _trigger_void_check() -> void:

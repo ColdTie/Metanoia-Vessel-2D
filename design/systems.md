@@ -46,7 +46,11 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**:
+  - First-ever settlement: automatically grants **Founding Bonus** (+5 max fuel)
+  - Every settlement after that: choose 1 of up to 3 randomly drawn passives
+    from `GameState.PASSIVE_POOL` (excludes passives already owned), shown as
+    a modal overlay on the Travel Screen
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -71,6 +75,12 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
 | *(4 more TBD)* | | |
+
+`founding_bonus` is granted automatically on the player's first settlement.
+The other five are the general reward pool: `GameState.draw_passive_choices()`
+draws up to 3 unowned passives from it for the choose-1-of-3 UI. Effects
+beyond `founding_bonus` are recorded as data only — the gameplay hooks
+(travel cost reduction, extra specimens, etc.) are still TODO.
 
 ---
 
@@ -122,6 +132,7 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
   "specimens": [],
   "credits": 0,
   "fuel": 100,
+  "founded_first_vessel": false,
   "settled_worlds": [
     { "id": "ardent_shore", "vessel_name": "Vessel of Ardent Shore" }
   ]
