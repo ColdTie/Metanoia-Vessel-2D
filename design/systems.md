@@ -46,7 +46,12 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**:
+  - First settlement ever grants **Founding Bonus** outright (+5 max fuel)
+  - Every settlement after that offers a choose-1-of-3 popup drawn from
+    `GameState.passive_pool`; picking one calls `acquire_passive_from_pool`
+  - If fewer than 3 (or zero) passives remain in the pool, fewer choices
+    are shown, down to none — degrades gracefully once the pool is drained
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -62,6 +67,10 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 
 ### Passive Roster (planned — 10 needed for void unlock)
 
+`founding_bonus` is granted automatically on first settlement; the rest
+live in `GameState.passive_pool` and are offered via choose-1-of-3 on every
+settlement after that.
+
 | ID | Name | Effect |
 |----|------|--------|
 | founding_bonus | Founding Bonus | First settlement — +5 max fuel |
@@ -71,6 +80,12 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
 | *(4 more TBD)* | | |
+
+Note: the effects above (extra specimens, dialogue options, reduced travel
+cost, hidden specimens, no forced combat) are recorded on the passive but
+not yet mechanically applied anywhere — only `founding_bonus`'s +5 max fuel
+is wired up (hardcoded in `travel_screen.gd`). Applying the rest is a
+future increment.
 
 ---
 
@@ -138,5 +153,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | built in code (`travel_screen.gd: _offer_passive_choice`) | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |
