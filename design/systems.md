@@ -45,8 +45,10 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO); vessel auto-named "Vessel of X" for now
+- **Reward flow**: choose 1 of 3 randomly drawn unowned passives (`scenes/ui/passive_select.tscn`)
+  - On a player's *first* settlement, Founding Bonus is guaranteed one of the 3 options
+  - If the pool is exhausted (all 10 passives owned), settling grants no passive choice
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -57,10 +59,16 @@ Each world carries:
 Persistent bonuses collected by settling, completing missions, and rare finds.
 
 - Stored in `GameState.passives` array
+- Full definitions live in `GameState.PASSIVE_POOL`; owning a passive removes it
+  from future choose-1-of-3 draws (`GameState.draw_passive_choices`)
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
-- Each passive is `{ id, name, desc, source }` dict
+- Each owned passive is `{ id, name, desc, source }` dict (source = world settled to earn it)
+- Mechanically live today: `founding_bonus` / `deep_reserves` (+5 max fuel),
+  `frost_hardened` / `star_chartered` (fuel discount on travel). The rest are
+  recorded but only take effect once their system exists (specimens, dialogue,
+  combat — all still TODO), matching the roster below.
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 — full for v1 void unlock)
 
 | ID | Name | Effect |
 |----|------|--------|
@@ -70,7 +78,10 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| quiet_diplomat | Quiet Diplomat | Talk outcomes with hostile creatures succeed more often |
+| steady_hands | Steady Hands | Combat encounters are less likely to end in retreat |
+| deep_reserves | Deep Reserves | +5 max fuel |
+| star_chartered | Star-Chartered | Travel to any world costs 1 less fuel |
 
 ---
 
@@ -138,5 +149,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | ✅ v1 |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |

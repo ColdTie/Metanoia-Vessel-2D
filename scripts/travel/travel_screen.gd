@@ -7,6 +7,7 @@ extends Control
 const STAR_SPEEDS: Array = [12.0, 28.0, 55.0]
 const STAR_COUNTS: Array = [120, 70, 35]
 const STAR_SPAN_W: float = 2560.0   # double viewport width for seamless wrap
+const PassiveSelectScene := preload("res://scenes/ui/passive_select.tscn")
 
 var _star_layers: Array = []
 var _star_root: Node2D
@@ -287,28 +288,40 @@ func _on_settle_pressed() -> void:
 	if world.get("settled", false):
 		return
 
+	var is_first_settlement: bool = not GameState.world_catalog.any(
+		func(w): return w.get("settled", false)
+	)
+
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
-	_refresh_status()
+
+	var force_id: String = "founding_bonus" if is_first_settlement else ""
+	var choices := GameState.draw_passive_choices(3, force_id)
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ world.get("description", "")
+
+	if choices.is_empty():
+		_refresh_status()
+		SaveLoad.save_game()
+		return
+
+	var select := PassiveSelectScene.instantiate()
+	select.passive_chosen.connect(func(choice): _on_passive_chosen(choice, world["name"]))
+	get_tree().root.add_child(select)
+	select.setup(choices)
+
+
+func _on_passive_chosen(choice: Dictionary, source: String) -> void:
+	GameState.grant_passive(choice, source)
+	_refresh_status()
+
+	_world_desc_label.text += \
+		"\n\n[color=#aaffaa]Passive gained: " + choice.get("name", "") + "[/color]"
 
 	SaveLoad.save_game()
 
