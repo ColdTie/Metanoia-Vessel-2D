@@ -8,6 +8,8 @@ const STAR_SPEEDS: Array = [12.0, 28.0, 55.0]
 const STAR_COUNTS: Array = [120, 70, 35]
 const STAR_SPAN_W: float = 2560.0   # double viewport width for seamless wrap
 
+const PassiveSelectScene := preload("res://scenes/ui/passive_select.tscn")
+
 var _star_layers: Array = []
 var _star_root: Node2D
 
@@ -20,6 +22,7 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _ui_root: Control
 
 var _selected_world_id: String = ""
 
@@ -96,6 +99,7 @@ func _build_ui() -> void:
 	root.name = "UIRoot"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(root)
+	_ui_root = root
 
 	_build_left_panel(root)
 	_build_right_panel(root)
@@ -290,27 +294,51 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
 	_refresh_status()
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ world.get("description", "")
 
-	SaveLoad.save_game()
+	if GameState.passives.is_empty():
+		# First-ever settlement: grant the founding passive automatically.
+		GameState.add_passive({
+			"id": "founding_bonus",
+			"name": "Founding Bonus",
+			"desc": "The act of founding grants clarity. +5 max fuel.",
+			"source": world["name"],
+		})
+		GameState.max_fuel += 5
+		GameState.refuel(5)
+		_refresh_status()
+		_world_desc_label.text += "\n\n[color=#aaffaa]Founding Bonus recorded: +5 max fuel.[/color]"
+		SaveLoad.save_game()
+	else:
+		_offer_passive_choice(world["name"])
+
+
+func _offer_passive_choice(world_name: String) -> void:
+	var choices := GameState.draw_passive_choices(3)
+	if choices.is_empty():
+		SaveLoad.save_game()
+		return
+
+	var overlay: Control = PassiveSelectScene.instantiate()
+	overlay.setup(choices)
+	overlay.passive_chosen.connect(func(choice: Dictionary):
+		GameState.add_passive({
+			"id": choice["id"],
+			"name": choice["name"],
+			"desc": choice["desc"],
+			"source": world_name,
+		})
+		_refresh_status()
+		_world_desc_label.text += "\n\n[color=#aaffaa]" + choice["name"] + " recorded.[/color]"
+		SaveLoad.save_game()
+	)
+	_ui_root.add_child(overlay)
 
 
 func _on_world_changed(_new_world: String) -> void:

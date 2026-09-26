@@ -4,6 +4,22 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Full passive roster (10 — matches MAX_PASSIVES). "founding_bonus" is granted
+# automatically on the player's first settlement; the rest are drawn 3-at-a-time
+# for the choose-1-of-3 reward on every settlement after that.
+const PASSIVE_ROSTER: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+	{"id": "warm_current", "name": "Warm Current", "desc": "Temperate-world Vessels refill 2 extra fuel on visit."},
+	{"id": "keel_true", "name": "Keel-True", "desc": "All travel costs 1 less fuel (minimum 0)."},
+	{"id": "star_chart", "name": "Star Chart", "desc": "Reveals a world's full description before you ever visit."},
+	{"id": "quiet_hands", "name": "Quiet Hands", "desc": "Combat is never triggered on worlds you've already settled."},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -109,6 +125,22 @@ func travel_to_world(world_id: String) -> bool:
 	current_world = world["name"]
 	world_changed.emit(current_world)
 	return true
+
+
+func has_passive(passive_id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == passive_id:
+			return true
+	return false
+
+
+func draw_passive_choices(count: int = 3) -> Array:
+	var candidates: Array = []
+	for entry in PASSIVE_ROSTER:
+		if entry["id"] != "founding_bonus" and not has_passive(entry["id"]):
+			candidates.append(entry)
+	candidates.shuffle()
+	return candidates.slice(0, min(count, candidates.size()))
 
 
 func add_passive(passive: Dictionary) -> void:
