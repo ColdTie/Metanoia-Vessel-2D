@@ -46,7 +46,11 @@ Each world carries:
 
 - A world can be settled once; action available when player is present
 - On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- **Reward flow**: the player's first-ever settlement grants Founding Bonus
+  automatically (no choice). Every settlement after that offers a
+  choose-1-of-3 pick from `GameState.PASSIVE_ROSTER`, drawn via
+  `GameState.get_passive_choices()` and presented as an in-scene overlay
+  in `travel_screen.gd` (`_show_passive_choice`) — ✅ v1, no separate scene
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -59,18 +63,27 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Stored in `GameState.passives` array
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
+- `GameState.PASSIVE_ROSTER` holds the 9 choosable passives (everything
+  except founding_bonus, which is a fixed first-settlement grant); see
+  Settling & Vessels above for how they're offered
 
-### Passive Roster (planned — 10 needed for void unlock)
+### Passive Roster (10 total — full roster for void unlock)
 
-| ID | Name | Effect |
-|----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
-| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
-| echo_listener | Echo Listener | Unlocks extra creature dialogue options |
-| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
-| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
-| dust_walker | Dust Walker | Desert worlds never trigger forced combat |
-| *(4 more TBD)* | | |
+| ID | Name | Effect | Mechanically wired? |
+|----|------|--------|----------------------|
+| founding_bonus | Founding Bonus | First settlement — +5 max fuel | ✅ |
+| root_knowledge | Root Knowledge | Jungle worlds yield extra specimens | ⏳ needs specimen system |
+| echo_listener | Echo Listener | Unlocks extra creature dialogue options | ⏳ needs dialogue system |
+| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel | ✅ |
+| tide_reader | Tide Reader | Ocean worlds reveal hidden specimens | ⏳ needs specimen system |
+| dust_walker | Dust Walker | Desert worlds never trigger forced combat | ⏳ needs encounter system |
+| deep_reserves | Deep Reserves | +10 max fuel | ✅ |
+| keen_trader | Keen Trader | Selling plants/info yields extra credits | ⏳ needs selling system |
+| quiet_hands | Quiet Hands | Hostile creatures offer to talk more readily | ⏳ needs encounter system |
+| safe_harbor | Safe Harbor | Vessels grant a small fuel refill on arrival | ⏳ needs Vessel refuel TODO |
+
+Passives marked ⏳ are recorded and shown to the player now; their
+mechanical effect lands when the system they depend on is built.
 
 ---
 
@@ -138,5 +151,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | inline overlay in `scripts/travel/travel_screen.gd` | ✅ v1 (no separate scene) |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |

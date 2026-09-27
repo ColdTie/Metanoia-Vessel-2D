@@ -4,6 +4,59 @@ extends Node
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
 
+# Choosable passive pool (excludes founding_bonus, which is a fixed grant on
+# the player's first settlement — see grant_passive()). Mechanical effects
+# are only wired up for entries whose underlying system already exists
+# (frost_hardened, deep_reserves); the rest are recorded now and take effect
+# once their system (combat, specimens, dialogue, selling) is built.
+const PASSIVE_ROSTER: Array = [
+	{
+		"id": "root_knowledge",
+		"name": "Root Knowledge",
+		"desc": "Jungle worlds yield extra specimens.",
+	},
+	{
+		"id": "echo_listener",
+		"name": "Echo Listener",
+		"desc": "Unlocks extra creature dialogue options.",
+	},
+	{
+		"id": "frost_hardened",
+		"name": "Frost Hardened",
+		"desc": "Ice-world travel costs 1 less fuel.",
+	},
+	{
+		"id": "tide_reader",
+		"name": "Tide Reader",
+		"desc": "Ocean worlds reveal hidden specimens.",
+	},
+	{
+		"id": "dust_walker",
+		"name": "Dust Walker",
+		"desc": "Desert worlds never trigger forced combat.",
+	},
+	{
+		"id": "deep_reserves",
+		"name": "Deep Reserves",
+		"desc": "Extra tanks bolted to the hull. +10 max fuel.",
+	},
+	{
+		"id": "keen_trader",
+		"name": "Keen Trader",
+		"desc": "Selling plants and info yields extra credits.",
+	},
+	{
+		"id": "quiet_hands",
+		"name": "Quiet Hands",
+		"desc": "Hostile creatures offer to talk more readily.",
+	},
+	{
+		"id": "safe_harbor",
+		"name": "Safe Harbor",
+		"desc": "Vessels grant a small fuel refill on arrival.",
+	},
+]
+
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
 var ship_decorations: Array = []
@@ -103,6 +156,8 @@ func travel_to_world(world_id: String) -> bool:
 	if world.is_empty():
 		return false
 	var cost: int = world.get("distance", 0)
+	if world.get("type", "") == "ice" and cost > 0 and has_passive("frost_hardened"):
+		cost -= 1
 	if fuel < cost:
 		return false
 	fuel -= cost
@@ -111,8 +166,34 @@ func travel_to_world(world_id: String) -> bool:
 	return true
 
 
-func add_passive(passive: Dictionary) -> void:
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+# Returns up to `count` randomly drawn passives the player doesn't already
+# own, for the choose-1-of-3 settling reward. May return fewer than `count`
+# once the pool runs low.
+func get_passive_choices(count: int = 3) -> Array:
+	var available: Array = []
+	for entry in PASSIVE_ROSTER:
+		if not has_passive(entry["id"]):
+			available.append(entry)
+	available.shuffle()
+	return available.slice(0, min(count, available.size()))
+
+
+func grant_passive(passive: Dictionary) -> void:
 	passives.append(passive)
+	match passive.get("id", ""):
+		"founding_bonus":
+			max_fuel += 5
+			refuel(5)
+		"deep_reserves":
+			max_fuel += 10
+			refuel(10)
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
