@@ -3,6 +3,21 @@ extends Node
 # Singleton: all mutable game state. Access via GameState.x anywhere.
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
+const BASE_MAX_FUEL := 100
+const FOUNDING_BONUS_FUEL := 5
+const PASSIVE_CHOICE_COUNT := 3
+
+# Passives offered by the choose-1-of-3 settling reward. Only founding_bonus
+# has a mechanical effect so far; the rest are recorded and pending hookups.
+# 4 more TBD (see design/systems.md) before the void unlock is reachable.
+const PASSIVE_ROSTER: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+]
 
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
@@ -111,11 +126,47 @@ func travel_to_world(world_id: String) -> bool:
 	return true
 
 
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+# Draws up to `count` distinct roster passives the player doesn't own yet.
+# Returns fewer (or none) once the roster is nearly exhausted.
+func draw_passive_choices(count: int = PASSIVE_CHOICE_COUNT) -> Array:
+	var pool: Array = []
+	for p in PASSIVE_ROSTER:
+		if not has_passive(p["id"]):
+			pool.append(p)
+	pool.shuffle()
+	return pool.slice(0, count)
+
+
 func add_passive(passive: Dictionary) -> void:
+	if has_passive(passive.get("id", "")):
+		return
 	passives.append(passive)
+	if passive.get("id", "") == "founding_bonus":
+		max_fuel = _compute_max_fuel()
+		refuel(FOUNDING_BONUS_FUEL)
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
+
+
+# max_fuel is derived from passives so it survives save/load.
+func _compute_max_fuel() -> int:
+	var total := BASE_MAX_FUEL
+	if has_passive("founding_bonus"):
+		total += FOUNDING_BONUS_FUEL
+	return total
+
+
+func recalc_max_fuel() -> void:
+	max_fuel = _compute_max_fuel()
+	fuel = min(fuel, max_fuel)
 
 
 func _trigger_void_check() -> void:
