@@ -20,6 +20,8 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _choice_box: VBoxContainer
+var _choosing_world: Dictionary = {}   # non-empty while a passive pick is pending
 
 var _selected_world_id: String = ""
 
@@ -200,6 +202,11 @@ func _build_right_panel(parent: Control) -> void:
 	_settle_button.pressed.connect(_on_settle_pressed)
 	btn_row.add_child(_settle_button)
 
+	_choice_box = VBoxContainer.new()
+	_choice_box.visible = false
+	_choice_box.add_theme_constant_override("separation", 6)
+	vbox.add_child(_choice_box)
+
 
 func _make_label(text: String) -> Label:
 	var lbl := Label.new()
@@ -224,7 +231,7 @@ func _populate_destinations() -> void:
 	for world in GameState.world_catalog:
 		var btn := Button.new()
 		var settled_tag: String = " [V]" if world.get("settled", false) else ""
-		var dist: int = world.get("distance", 0)
+		var dist: int = GameState.get_travel_cost(world)
 		var cost_tag: String = " (%d)" % dist if dist > 0 else " (start)"
 		var is_current: bool = world["name"] == GameState.current_world
 		btn.text = ("> " if is_current else "") + world["name"] + settled_tag + cost_tag
@@ -244,7 +251,7 @@ func _select_world(world_id: String) -> void:
 	_world_name_label.text = world["name"]
 	_world_desc_label.text = world.get("description", "")
 
-	var cost: int = world.get("distance", 0)
+	var cost: int = GameState.get_travel_cost(world)
 	var is_current: bool = world["name"] == GameState.current_world
 	var can_afford: bool = GameState.fuel >= cost
 
@@ -262,7 +269,7 @@ func _select_world(world_id: String) -> void:
 
 
 func _on_depart_pressed() -> void:
-	if _selected_world_id.is_empty():
+	if _selected_world_id.is_empty() or not _choosing_world.is_empty():
 		return
 	if GameState.travel_to_world(_selected_world_id):
 		_refresh_status()
@@ -284,32 +291,57 @@ func _on_settle_pressed() -> void:
 	var world := GameState.get_world_by_id(_selected_world_id)
 	if world.is_empty() or world["name"] != GameState.current_world:
 		return
-	if world.get("settled", false):
+	if world.get("settled", false) or not _choosing_world.is_empty():
 		return
 
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
-
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
-	_refresh_status()
 
+	var choices := GameState.draw_passive_choices()
+	if choices.is_empty():
+		SaveLoad.save_game()
+		_world_desc_label.text = "You have founded [b]" + world["vessel_name"] + "[/b]."
+		return
+
+	# Save only after the pick, so a settled world never lacks its passive.
+	_choosing_world = world
+	_depart_button.disabled = true
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "[color=#aaffaa]Choose one passive:[/color]"
+	for child in _choice_box.get_children():
+		child.queue_free()
+	for choice in choices:
+		var btn := Button.new()
+		btn.text = "%s — %s" % [choice["name"], choice["desc"]]
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn.custom_minimum_size = Vector2(0.0, 40.0)
+		btn.pressed.connect(func(): _on_passive_chosen(choice))
+		_choice_box.add_child(btn)
+	_choice_box.visible = true
 
+
+func _on_passive_chosen(choice: Dictionary) -> void:
+	if _choosing_world.is_empty():
+		return
+	GameState.add_passive({
+		"id": choice["id"],
+		"name": choice["name"],
+		"desc": choice["desc"],
+		"source": _choosing_world["name"],
+	})
+	var vessel: String = _choosing_world["vessel_name"]
+	_choosing_world = {}
+	_choice_box.visible = false
+	for child in _choice_box.get_children():
+		child.queue_free()
+	_populate_destinations()
+	_refresh_status()
+	_world_desc_label.text = \
+		"You have founded [b]" + vessel + "[/b].\n\n" \
+		+ "[color=#aaffaa]Passive gained: " + choice["name"] + ".[/color]"
 	SaveLoad.save_game()
 
 

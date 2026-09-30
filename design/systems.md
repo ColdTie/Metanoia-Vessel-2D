@@ -45,8 +45,11 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO; default "Vessel of X"), receives a passive
+- **Reward flow**: choose 1 of 3 randomly drawn passives the player doesn't own yet
+  (`GameState.draw_passive_choices()`; fewer if the roster is nearly exhausted).
+  Choice UI is inline on the travel screen. Save happens after the pick, and Depart
+  is disabled until the pick is made.
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -59,12 +62,20 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 - Stored in `GameState.passives` array
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
 - Each passive is `{ id, name, desc, source }` dict
+- `max_fuel` is derived (100 + 5 with Founding Bonus) via `GameState.sync_max_fuel()`,
+  so it is not stored in the save
+- Travel cost goes through `GameState.get_travel_cost(world)` (applies Frost Hardened;
+  minimum 1 for any real trip)
 
 ### Passive Roster (planned — 10 needed for void unlock)
 
+Roster lives in `GameState.PASSIVE_ROSTER`. Only founding_bonus and frost_hardened
+have live effects; the rest are offered/recorded but their hooks wait on exploration
+and encounters.
+
 | ID | Name | Effect |
 |----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
+| founding_bonus | Founding Bonus | +5 max fuel (now one option among the 3 offered, not automatic) |
 | root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
 | echo_listener | Echo Listener | Unlocks extra creature dialogue options |
 | frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
@@ -138,5 +149,5 @@ Forced combat: almost never. The exception is a tiny number of scripted story be
 | World Surface | `scenes/world/world_surface.tscn` | TODO |
 | Encounter | `scenes/encounter/encounter.tscn` | TODO |
 | Ship View | `scenes/ship/ship_view.tscn` | TODO |
-| Passive Select (1-of-3) | `scenes/ui/passive_select.tscn` | TODO |
+| Passive Select (1-of-3) | inline in travel screen | ✅ v1 (dedicated scene TODO) |
 | Vessel Naming Dialog | `scenes/ui/vessel_name_dialog.tscn` | TODO |

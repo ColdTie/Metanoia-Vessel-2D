@@ -3,6 +3,19 @@ extends Node
 # Singleton: all mutable game state. Access via GameState.x anywhere.
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
+const BASE_MAX_FUEL := 100
+const CHOICES_PER_SETTLE := 3
+
+# Passives that can be offered on settling. Effects marked "pending" have no
+# hook yet because the systems they touch (exploration, encounters) don't exist.
+const PASSIVE_ROSTER: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens. (effect pending)"},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options. (effect pending)"},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens. (effect pending)"},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat. (effect pending)"},
+]
 
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
@@ -10,7 +23,7 @@ var ship_decorations: Array = []
 var specimens: Array = []         # Array of {id, world_id, name}
 var credits: int = 0
 var fuel: int = 100
-var max_fuel: int = 100
+var max_fuel: int = BASE_MAX_FUEL  # derived from passives; see sync_max_fuel()
 
 # World catalog — initialized in _ready(); mutated when worlds are settled.
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
@@ -102,7 +115,7 @@ func travel_to_world(world_id: String) -> bool:
 	var world := get_world_by_id(world_id)
 	if world.is_empty():
 		return false
-	var cost: int = world.get("distance", 0)
+	var cost := get_travel_cost(world)
 	if fuel < cost:
 		return false
 	fuel -= cost
@@ -111,8 +124,45 @@ func travel_to_world(world_id: String) -> bool:
 	return true
 
 
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+# Fuel cost to reach a world, after passive modifiers. Never below 1 for a real trip.
+func get_travel_cost(world: Dictionary) -> int:
+	var cost: int = world.get("distance", 0)
+	if cost > 0 and world.get("type", "") == "ice" and has_passive("frost_hardened"):
+		cost = max(cost - 1, 1)
+	return cost
+
+
+# Recompute max_fuel from passives (so it never needs saving) and clamp fuel.
+# Returns how much max_fuel grew.
+func sync_max_fuel() -> int:
+	var old := max_fuel
+	max_fuel = BASE_MAX_FUEL + (5 if has_passive("founding_bonus") else 0)
+	fuel = min(fuel, max_fuel)
+	return max_fuel - old
+
+
+# Up to `count` distinct roster passives the player doesn't own yet, random order.
+func draw_passive_choices(count: int = CHOICES_PER_SETTLE) -> Array:
+	var pool: Array = []
+	for entry in PASSIVE_ROSTER:
+		if not has_passive(entry["id"]):
+			pool.append(entry)
+	pool.shuffle()
+	return pool.slice(0, count)
+
+
 func add_passive(passive: Dictionary) -> void:
 	passives.append(passive)
+	var gained := sync_max_fuel()
+	if gained > 0:
+		refuel(gained)
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
