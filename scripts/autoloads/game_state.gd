@@ -3,6 +3,19 @@ extends Node
 # Singleton: all mutable game state. Access via GameState.x anywhere.
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
+const BASE_MAX_FUEL := 100
+const CHOICE_COUNT := 3   # Passives offered per settling
+
+# Passive roster (6 of 10 defined; 4 TBD). Effects other than founding_bonus
+# are not wired yet.
+const PASSIVE_ROSTER := [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+]
 
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
@@ -122,6 +135,56 @@ func _trigger_void_check() -> void:
 	# UNRESOLVED: does the replicator feed into the void endgame?
 	# Do not implement without resolving that design question first.
 	push_warning("GameState: 10 passives reached — void/black-hole endgame not yet implemented.")
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+# Up to CHOICE_COUNT unowned passives, random order. The first settlement
+# always offers founding_bonus (the doc'd first-settlement reward).
+func draw_passive_choices() -> Array:
+	var pool: Array = []
+	for p in PASSIVE_ROSTER:
+		if not has_passive(p["id"]):
+			pool.append(p)
+	pool.shuffle()
+	var choices: Array = pool.slice(0, CHOICE_COUNT)
+	if passives.is_empty():
+		var founding: Dictionary = PASSIVE_ROSTER[0]
+		var found := false
+		for c in choices:
+			if c["id"] == founding["id"]:
+				found = true
+		if not found:
+			choices[0] = founding
+	return choices
+
+
+# Grants the chosen passive (must be unowned and in the roster).
+func choose_passive(id: String, source: String) -> bool:
+	if has_passive(id):
+		return false
+	for p in PASSIVE_ROSTER:
+		if p["id"] == id:
+			var entry: Dictionary = p.duplicate()
+			entry["source"] = source
+			add_passive(entry)
+			recalc_max_fuel()
+			return true
+	return false
+
+
+# max_fuel is derived from passives so it survives save/load.
+func recalc_max_fuel() -> void:
+	var old := max_fuel
+	max_fuel = BASE_MAX_FUEL + (5 if has_passive("founding_bonus") else 0)
+	if max_fuel > old:
+		refuel(max_fuel - old)
+	fuel = min(fuel, max_fuel)
 
 
 func add_credits(amount: int) -> void:

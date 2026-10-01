@@ -20,6 +20,7 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _choice_row: HBoxContainer
 
 var _selected_world_id: String = ""
 
@@ -200,6 +201,12 @@ func _build_right_panel(parent: Control) -> void:
 	_settle_button.pressed.connect(_on_settle_pressed)
 	btn_row.add_child(_settle_button)
 
+	_choice_row = HBoxContainer.new()
+	_choice_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_choice_row.add_theme_constant_override("separation", 12)
+	_choice_row.visible = false
+	vbox.add_child(_choice_row)
+
 
 func _make_label(text: String) -> Label:
 	var lbl := Label.new()
@@ -290,26 +297,40 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
 	_refresh_status()
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "Choose a passive to carry forward:"
+	_show_passive_choices(world["name"])
+	# Saved after the choice, so a settle is never persisted without its passive.
 
+
+func _show_passive_choices(source: String) -> void:
+	_depart_button.disabled = true
+	for child in _choice_row.get_children():
+		child.queue_free()
+	for choice in GameState.draw_passive_choices():
+		var btn := Button.new()
+		btn.text = choice["name"] + "\n" + choice["desc"]
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn.custom_minimum_size = Vector2(200.0, 70.0)
+		btn.pressed.connect(_on_passive_chosen.bind(choice["id"], source))
+		_choice_row.add_child(btn)
+	_choice_row.visible = true
+
+
+func _on_passive_chosen(id: String, source: String) -> void:
+	if not GameState.choose_passive(id, source):
+		return
+	_choice_row.visible = false
+	for child in _choice_row.get_children():
+		child.queue_free()
+	_populate_destinations()
+	_refresh_status()
+	_world_desc_label.text = "[color=#aaffaa]Passive recorded.[/color]"
 	SaveLoad.save_game()
 
 
