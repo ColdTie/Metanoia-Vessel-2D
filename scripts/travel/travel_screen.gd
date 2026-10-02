@@ -20,6 +20,8 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _ui_root: Control
+var _choice_overlay: Control
 
 var _selected_world_id: String = ""
 
@@ -96,6 +98,7 @@ func _build_ui() -> void:
 	root.name = "UIRoot"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(root)
+	_ui_root = root
 
 	_build_left_panel(root)
 	_build_right_panel(root)
@@ -224,7 +227,7 @@ func _populate_destinations() -> void:
 	for world in GameState.world_catalog:
 		var btn := Button.new()
 		var settled_tag: String = " [V]" if world.get("settled", false) else ""
-		var dist: int = world.get("distance", 0)
+		var dist: int = GameState.get_travel_cost(world["id"])
 		var cost_tag: String = " (%d)" % dist if dist > 0 else " (start)"
 		var is_current: bool = world["name"] == GameState.current_world
 		btn.text = ("> " if is_current else "") + world["name"] + settled_tag + cost_tag
@@ -244,7 +247,7 @@ func _select_world(world_id: String) -> void:
 	_world_name_label.text = world["name"]
 	_world_desc_label.text = world.get("description", "")
 
-	var cost: int = world.get("distance", 0)
+	var cost: int = GameState.get_travel_cost(world_id)
 	var is_current: bool = world["name"] == GameState.current_world
 	var can_afford: bool = GameState.fuel >= cost
 
@@ -287,30 +290,77 @@ func _on_settle_pressed() -> void:
 	if world.get("settled", false):
 		return
 
+	# The world is marked settled only once a passive is chosen.
+	_settle_button.visible = false
+	_show_passive_choice(world)
+
+
+func _show_passive_choice(world: Dictionary) -> void:
+	var choices := GameState.draw_passive_choices()
+	if choices.is_empty():
+		_finish_settle(world, "")
+		return
+
+	var dim := ColorRect.new()
+	dim.name = "PassiveChoiceOverlay"
+	dim.color = Color(0, 0, 0, 0.7)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui_root.add_child(dim)
+	_choice_overlay = dim
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_choice_overlay.add_child(center)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	center.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Founding %s — choose one gift" % world["name"]
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+
+	for p in choices:
+		var btn := Button.new()
+		btn.text = "%s\n%s" % [p["name"], p["desc"]]
+		btn.custom_minimum_size = Vector2(480.0, 64.0)
+		var pid: String = p["id"]
+		btn.pressed.connect(func(): _on_passive_chosen(world, pid))
+		vbox.add_child(btn)
+
+
+func _on_passive_chosen(world: Dictionary, passive_id: String) -> void:
+	if is_instance_valid(_choice_overlay):
+		_choice_overlay.queue_free()
+	_finish_settle(world, passive_id)
+
+
+func _finish_settle(world: Dictionary, passive_id: String) -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
+	var gained := ""
+	if not passive_id.is_empty() and GameState.choose_passive(passive_id, world["name"]):
+		gained = passive_id
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
-	_settle_button.visible = false
 	_populate_destinations()
 	_refresh_status()
 
-	_world_desc_label.text = \
-		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+	var msg := "You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
+		+ world.get("description", "")
+	if not gained.is_empty():
+		msg += "\n\n[color=#aaffaa]Gained passive: " \
+			+ str(_passive_name(gained)) + "[/color]"
+	_world_desc_label.text = msg
 
 	SaveLoad.save_game()
+
+
+func _passive_name(passive_id: String) -> String:
+	for p in GameState.PASSIVE_POOL:
+		if p["id"] == passive_id:
+			return p["name"]
+	return passive_id
 
 
 func _on_world_changed(_new_world: String) -> void:
