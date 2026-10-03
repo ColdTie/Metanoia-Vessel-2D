@@ -3,6 +3,18 @@ extends Node
 # Singleton: all mutable game state. Access via GameState.x anywhere.
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
+const CHOICE_COUNT := 3   # Passives offered per settling
+
+# Passive roster (4 more TBD to reach 10). Only founding_bonus and
+# frost_hardened have mechanical effects so far; the rest are recorded only.
+const PASSIVE_ROSTER: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+]
 
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
@@ -102,7 +114,7 @@ func travel_to_world(world_id: String) -> bool:
 	var world := get_world_by_id(world_id)
 	if world.is_empty():
 		return false
-	var cost: int = world.get("distance", 0)
+	var cost := get_travel_cost(world)
 	if fuel < cost:
 		return false
 	fuel -= cost
@@ -111,8 +123,42 @@ func travel_to_world(world_id: String) -> bool:
 	return true
 
 
+func get_travel_cost(world: Dictionary) -> int:
+	var cost: int = world.get("distance", 0)
+	if cost > 0 and world.get("type", "") == "ice" and has_passive("frost_hardened"):
+		cost -= 1
+	return cost
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+# Draws up to CHOICE_COUNT unowned passives. The first settlement always
+# includes founding_bonus.
+func get_passive_choices() -> Array:
+	var pool: Array = []
+	for p in PASSIVE_ROSTER:
+		if not has_passive(p["id"]):
+			pool.append(p.duplicate())
+	pool.shuffle()
+	var choices: Array = []
+	for p in pool:
+		if p["id"] == "founding_bonus":
+			choices.push_front(p)
+		else:
+			choices.append(p)
+	return choices.slice(0, CHOICE_COUNT)
+
+
 func add_passive(passive: Dictionary) -> void:
 	passives.append(passive)
+	if passive.get("id", "") == "founding_bonus":
+		max_fuel += 5
+		refuel(5)
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()

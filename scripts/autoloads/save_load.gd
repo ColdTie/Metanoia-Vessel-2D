@@ -12,6 +12,7 @@ func save_game() -> void:
 		"specimens": GameState.specimens,
 		"credits": GameState.credits,
 		"fuel": GameState.fuel,
+		"max_fuel": GameState.max_fuel,
 		"settled_worlds": _get_settled_worlds(),
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -37,10 +38,12 @@ func load_game() -> bool:
 	var data: Dictionary = json.get_data()
 	GameState.current_world = data.get("current_world", "Ardent Shore")
 	GameState.passives = data.get("passives", [])
+	# Saves from before max_fuel was stored: derive it from the founding passive.
+	GameState.max_fuel = int(data.get("max_fuel", 105 if GameState.has_passive("founding_bonus") else 100))
 	GameState.ship_decorations = data.get("ship_decorations", [])
 	GameState.specimens = data.get("specimens", [])
 	GameState.credits = data.get("credits", 0)
-	GameState.fuel = data.get("fuel", 100)
+	GameState.fuel = mini(int(data.get("fuel", 100)), GameState.max_fuel)
 	_restore_settled_worlds(data.get("settled_worlds", []))
 	return true
 

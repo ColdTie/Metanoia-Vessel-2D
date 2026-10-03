@@ -20,6 +20,8 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _choice_overlay: Control
+var _choice_box: VBoxContainer
 
 var _selected_world_id: String = ""
 
@@ -99,6 +101,7 @@ func _build_ui() -> void:
 
 	_build_left_panel(root)
 	_build_right_panel(root)
+	_build_choice_overlay(root)
 
 
 func _build_left_panel(parent: Control) -> void:
@@ -201,6 +204,44 @@ func _build_right_panel(parent: Control) -> void:
 	btn_row.add_child(_settle_button)
 
 
+func _build_choice_overlay(parent: Control) -> void:
+	var dim := ColorRect.new()
+	dim.color = Color(0.0, 0.0, 0.05, 0.8)
+	_choice_overlay = dim
+	_choice_overlay.name = "PassiveSelect"
+	_choice_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_choice_overlay.visible = false
+	parent.add_child(_choice_overlay)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_choice_overlay.add_child(center)
+
+	var panel := PanelContainer.new()
+	center.add_child(panel)
+
+	_choice_box = VBoxContainer.new()
+	_choice_box.custom_minimum_size = Vector2(520.0, 0.0)
+	_choice_box.add_theme_constant_override("separation", 8)
+	panel.add_child(_choice_box)
+
+
+func _show_passive_choices() -> void:
+	for child in _choice_box.get_children():
+		child.queue_free()
+	var title := Label.new()
+	title.text = "Choose a passive for this Vessel"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_choice_box.add_child(title)
+	for passive in GameState.get_passive_choices():
+		var btn := Button.new()
+		btn.text = "%s\n%s" % [passive["name"], passive["desc"]]
+		btn.custom_minimum_size = Vector2(0.0, 56.0)
+		btn.pressed.connect(func(): _on_passive_chosen(passive))
+		_choice_box.add_child(btn)
+	_choice_overlay.visible = true
+
+
 func _make_label(text: String) -> Label:
 	var lbl := Label.new()
 	lbl.text = text
@@ -224,7 +265,7 @@ func _populate_destinations() -> void:
 	for world in GameState.world_catalog:
 		var btn := Button.new()
 		var settled_tag: String = " [V]" if world.get("settled", false) else ""
-		var dist: int = world.get("distance", 0)
+		var dist := GameState.get_travel_cost(world)
 		var cost_tag: String = " (%d)" % dist if dist > 0 else " (start)"
 		var is_current: bool = world["name"] == GameState.current_world
 		btn.text = ("> " if is_current else "") + world["name"] + settled_tag + cost_tag
@@ -244,7 +285,7 @@ func _select_world(world_id: String) -> void:
 	_world_name_label.text = world["name"]
 	_world_desc_label.text = world.get("description", "")
 
-	var cost: int = world.get("distance", 0)
+	var cost := GameState.get_travel_cost(world)
 	var is_current: bool = world["name"] == GameState.current_world
 	var can_afford: bool = GameState.fuel >= cost
 
@@ -286,19 +327,22 @@ func _on_settle_pressed() -> void:
 		return
 	if world.get("settled", false):
 		return
+	# The world is only marked settled once a passive is chosen, so quitting
+	# mid-choice leaves nothing half-founded.
+	_show_passive_choices()
+
+
+func _on_passive_chosen(passive: Dictionary) -> void:
+	var world := GameState.get_world_by_id(_selected_world_id)
+	if world.is_empty() or world.get("settled", false):
+		return
+	_choice_overlay.visible = false
 
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
-
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
+	var gained: Dictionary = passive.duplicate()
+	gained["source"] = world["name"]
+	GameState.add_passive(gained)
 
 	_settle_button.visible = false
 	_populate_destinations()
@@ -307,8 +351,7 @@ func _on_settle_pressed() -> void:
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n[color=#aaffaa]Passive gained: " + passive["name"] + "[/color]"
 
 	SaveLoad.save_game()
 
