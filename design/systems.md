@@ -45,8 +45,11 @@ Each world carries:
 ## Settling & Vessels
 
 - A world can be settled once; action available when player is present
-- On settle: player names the Vessel (dialog TODO), receives a passive
-- **Reward flow**: choose 1 of 3 randomly drawn passives (choose-1-of-3 UI TODO)
+- On settle: player names the Vessel (dialog TODO; default "Vessel of X"), receives a passive
+- **Reward flow** (✅): pressing Found Vessel draws up to 3 distinct, not-yet-owned
+  passives from the roster (`GameState.draw_passive_choices`); the player picks one.
+  The world is only marked settled once a pick is made. If the roster is exhausted,
+  the world is settled with no passive.
 - Settled worlds show `[V]` marker in travel chart
 - Vessels provide partial fuel refill (TODO) and trade options (TODO)
 
@@ -58,19 +61,24 @@ Persistent bonuses collected by settling, completing missions, and rare finds.
 
 - Stored in `GameState.passives` array
 - Reaching `MAX_PASSIVES` (10) triggers the void unlock check
-- Each passive is `{ id, name, desc, source }` dict
+- Each passive is `{ id, name, desc, source }` dict; duplicates are ignored
+- Roster lives in `GameState.PASSIVE_ROSTER`; entries carry `active` (effect implemented)
+- `max_fuel` is derived (100 + 5 if founding_bonus), recomputed on load — not saved
 
 ### Passive Roster (planned — 10 needed for void unlock)
 
 | ID | Name | Effect |
 |----|------|--------|
-| founding_bonus | Founding Bonus | First settlement — +5 max fuel |
+| founding_bonus | Founding Bonus | +5 max fuel (✅ active) |
 | root_knowledge | Root Knowledge | Jungle worlds yield extra specimens |
 | echo_listener | Echo Listener | Unlocks extra creature dialogue options |
-| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel |
+| frost_hardened | Frost Hardened | Ice-world travel costs 1 less fuel (✅ active) |
 | tide_reader | Tide Reader | Ocean worlds reveal hidden specimens |
 | dust_walker | Dust Walker | Desert worlds never trigger forced combat |
 | *(4 more TBD)* | | |
+
+Other passives are in the pool but their effects are not yet wired (UI says "effect coming soon").
+Founding Bonus is no longer guaranteed on first settle — it is one of the random draw options.
 
 ---
 

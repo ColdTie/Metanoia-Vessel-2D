@@ -3,6 +3,25 @@ extends Node
 # Singleton: all mutable game state. Access via GameState.x anywhere.
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
+const BASE_MAX_FUEL := 100
+const FOUNDING_FUEL_BONUS := 5
+
+# Passive roster (6 of 10 defined; 4 TBD). `active` = effect implemented in code.
+# Combat passives are intentionally absent: they pay off in the endgame void.
+const PASSIVE_ROSTER: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "active": true,
+		"desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "active": false,
+		"desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "active": false,
+		"desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "active": true,
+		"desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "active": false,
+		"desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "active": false,
+		"desc": "Desert worlds never trigger forced combat."},
+]
 
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
@@ -102,7 +121,7 @@ func travel_to_world(world_id: String) -> bool:
 	var world := get_world_by_id(world_id)
 	if world.is_empty():
 		return false
-	var cost: int = world.get("distance", 0)
+	var cost := get_travel_cost(world)
 	if fuel < cost:
 		return false
 	fuel -= cost
@@ -111,8 +130,43 @@ func travel_to_world(world_id: String) -> bool:
 	return true
 
 
+func get_travel_cost(world: Dictionary) -> int:
+	var cost: int = world.get("distance", 0)
+	if cost > 0 and world.get("type", "") == "ice" and has_passive("frost_hardened"):
+		cost -= 1
+	return cost
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+# Up to `count` distinct roster passives the player does not yet own, random order.
+func draw_passive_choices(count: int = 3) -> Array:
+	var pool: Array = []
+	for def in PASSIVE_ROSTER:
+		if not has_passive(def["id"]):
+			pool.append(def)
+	pool.shuffle()
+	return pool.slice(0, count)
+
+
+# Recomputes max_fuel from owned passives (max_fuel is derived, not saved).
+func recalc_max_fuel() -> void:
+	max_fuel = BASE_MAX_FUEL + (FOUNDING_FUEL_BONUS if has_passive("founding_bonus") else 0)
+	fuel = min(fuel, max_fuel)
+
+
 func add_passive(passive: Dictionary) -> void:
+	if has_passive(passive.get("id", "")):
+		return
 	passives.append(passive)
+	if passive.get("id", "") == "founding_bonus":
+		recalc_max_fuel()
+		refuel(FOUNDING_FUEL_BONUS)
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
