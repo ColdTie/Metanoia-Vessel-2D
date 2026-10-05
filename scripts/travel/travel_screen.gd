@@ -22,6 +22,7 @@ var _depart_button: Button
 var _settle_button: Button
 
 var _selected_world_id: String = ""
+var _choice_row: HBoxContainer
 
 
 func _ready() -> void:
@@ -224,7 +225,7 @@ func _populate_destinations() -> void:
 	for world in GameState.world_catalog:
 		var btn := Button.new()
 		var settled_tag: String = " [V]" if world.get("settled", false) else ""
-		var dist: int = world.get("distance", 0)
+		var dist: int = GameState.get_travel_cost(world)
 		var cost_tag: String = " (%d)" % dist if dist > 0 else " (start)"
 		var is_current: bool = world["name"] == GameState.current_world
 		btn.text = ("> " if is_current else "") + world["name"] + settled_tag + cost_tag
@@ -244,7 +245,7 @@ func _select_world(world_id: String) -> void:
 	_world_name_label.text = world["name"]
 	_world_desc_label.text = world.get("description", "")
 
-	var cost: int = world.get("distance", 0)
+	var cost: int = GameState.get_travel_cost(world)
 	var is_current: bool = world["name"] == GameState.current_world
 	var can_afford: bool = GameState.fuel >= cost
 
@@ -290,26 +291,44 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
-	_refresh_status()
-
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "Choose one passive to carry forward:"
+	_show_passive_choices()
+	SaveLoad.save_game()
 
+
+func _show_passive_choices() -> void:
+	var choices := GameState.draw_passive_choices(3)
+	if choices.is_empty():
+		return
+	_choice_row = HBoxContainer.new()
+	_choice_row.add_theme_constant_override("separation", 8)
+	_settle_button.get_parent().add_child(_choice_row)
+	for p in choices:
+		var btn := Button.new()
+		btn.text = p["name"]
+		btn.tooltip_text = p["desc"]
+		btn.custom_minimum_size = Vector2(150.0, 40.0)
+		btn.pressed.connect(func(): _on_passive_chosen(p))
+		_choice_row.add_child(btn)
+		_world_desc_label.text += "\n[b]%s[/b] — %s" % [p["name"], p["desc"]]
+
+
+func _on_passive_chosen(p: Dictionary) -> void:
+	var world := GameState.get_world_by_id(_selected_world_id)
+	GameState.add_passive({
+		"id": p["id"], "name": p["name"], "desc": p["desc"],
+		"source": world.get("name", ""),
+	})
+	_choice_row.queue_free()
+	_choice_row = null
+	_refresh_status()
+	_world_desc_label.text = \
+		"[b]" + world.get("vessel_name", "") + "[/b] founded.\n\n" \
+		+ "[color=#aaffaa]Passive gained: " + p["name"] + " — " + p["desc"] + "[/color]"
 	SaveLoad.save_game()
 
 
