@@ -3,6 +3,18 @@ extends Node
 # Singleton: all mutable game state. Access via GameState.x anywhere.
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
+const BASE_MAX_FUEL := 100
+const CHOICE_COUNT := 3   # Settling offers this many passives to pick from
+
+# Passives that can be offered when settling (see design/systems.md roster).
+const PASSIVE_POOL: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+]
 
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
@@ -102,7 +114,7 @@ func travel_to_world(world_id: String) -> bool:
 	var world := get_world_by_id(world_id)
 	if world.is_empty():
 		return false
-	var cost: int = world.get("distance", 0)
+	var cost := get_travel_cost(world)
 	if fuel < cost:
 		return false
 	fuel -= cost
@@ -111,8 +123,46 @@ func travel_to_world(world_id: String) -> bool:
 	return true
 
 
+func get_travel_cost(world: Dictionary) -> int:
+	var cost: int = world.get("distance", 0)
+	if cost > 0 and world.get("type", "") == "ice" and has_passive("frost_hardened"):
+		cost -= 1
+	return cost
+
+
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+# Random unowned passives from the pool, up to `count`. Optional rng for tests.
+func draw_passive_choices(count: int = CHOICE_COUNT, rng: RandomNumberGenerator = null) -> Array:
+	var available: Array = []
+	for p in PASSIVE_POOL:
+		if not has_passive(p["id"]):
+			available.append(p)
+	if rng == null:
+		available.shuffle()
+	else:
+		for i in range(available.size() - 1, 0, -1):
+			var j := rng.randi_range(0, i)
+			var tmp = available[i]
+			available[i] = available[j]
+			available[j] = tmp
+	return available.slice(0, count)
+
+
+# Recompute stats derived from passives (call after add_passive or loading).
+func recompute_passive_effects() -> void:
+	max_fuel = BASE_MAX_FUEL + (5 if has_passive("founding_bonus") else 0)
+	fuel = min(fuel, max_fuel)
+
+
 func add_passive(passive: Dictionary) -> void:
 	passives.append(passive)
+	recompute_passive_effects()
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()
