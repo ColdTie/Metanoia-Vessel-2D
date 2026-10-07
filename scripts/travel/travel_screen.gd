@@ -224,8 +224,8 @@ func _populate_destinations() -> void:
 	for world in GameState.world_catalog:
 		var btn := Button.new()
 		var settled_tag: String = " [V]" if world.get("settled", false) else ""
-		var dist: int = world.get("distance", 0)
-		var cost_tag: String = " (%d)" % dist if dist > 0 else " (start)"
+		var dist: int = GameState.get_travel_cost(world)
+		var cost_tag: String = " (%d)" % dist if world.get("distance", 0) > 0 else " (start)"
 		var is_current: bool = world["name"] == GameState.current_world
 		btn.text = ("> " if is_current else "") + world["name"] + settled_tag + cost_tag
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -244,7 +244,7 @@ func _select_world(world_id: String) -> void:
 	_world_name_label.text = world["name"]
 	_world_desc_label.text = world.get("description", "")
 
-	var cost: int = world.get("distance", 0)
+	var cost: int = GameState.get_travel_cost(world)
 	var is_current: bool = world["name"] == GameState.current_world
 	var can_afford: bool = GameState.fuel >= cost
 
@@ -286,30 +286,58 @@ func _on_settle_pressed() -> void:
 		return
 	if world.get("settled", false):
 		return
+	_settle_button.visible = false
+	_depart_button.disabled = true
+	var choices := GameState.draw_passive_choices()
+	if choices.is_empty():
+		_finish_settle(world, {})
+	else:
+		_show_passive_choice(world, choices)
 
+
+# Modal overlay: pick 1 of the offered passives. Settling completes on pick.
+func _show_passive_choice(world: Dictionary, choices: Array) -> void:
+	var overlay := PanelContainer.new()
+	overlay.name = "PassiveChoice"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	overlay.custom_minimum_size = Vector2(520.0, 0.0)
+	overlay.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	overlay.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 8)
+	overlay.add_child(box)
+	var title := Label.new()
+	title.text = "Founding %s - choose a gift" % world["name"]
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	for choice in choices:
+		var btn := Button.new()
+		btn.text = "%s\n%s" % [choice["name"], choice["desc"]]
+		btn.custom_minimum_size = Vector2(0.0, 56.0)
+		btn.pressed.connect(func():
+			overlay.queue_free()
+			_finish_settle(world, choice))
+		box.add_child(btn)
+	$UI/UIRoot.add_child(overlay)
+
+
+func _finish_settle(world: Dictionary, choice: Dictionary) -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
+	var note := ""
+	if not choice.is_empty():
+		var passive: Dictionary = choice.duplicate()
+		passive["source"] = world["name"]
+		GameState.add_passive(passive)
+		note = "[color=#aaffaa]Gained passive: [b]%s[/b] - %s[/color]" % [passive["name"], passive["desc"]]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
-	_settle_button.visible = false
 	_populate_destinations()
 	_refresh_status()
-
+	_select_world(world["id"])
+	_settle_button.visible = false
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
-
+		+ world.get("description", "") + "\n\n" + note
 	SaveLoad.save_game()
 
 
