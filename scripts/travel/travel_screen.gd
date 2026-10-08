@@ -290,16 +290,6 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
-
 	_settle_button.visible = false
 	_populate_destinations()
 	_refresh_status()
@@ -307,9 +297,41 @@ func _on_settle_pressed() -> void:
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
 		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ "\n\n[color=#aaffaa]Choose a passive to carry forward.[/color]"
 
+	SaveLoad.save_game()
+	_show_passive_select(world)
+
+
+# Choose-1-of-3 overlay, built in code like the rest of the screen.
+func _show_passive_select(world: Dictionary) -> void:
+	var choices := GameState.draw_passive_choices()
+	if choices.is_empty():
+		return
+	var overlay := PanelContainer.new()
+	overlay.name = "PassiveSelect"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	var box := VBoxContainer.new()
+	overlay.add_child(box)
+	box.add_child(_make_label("Choose a passive"))
+	for choice in choices:
+		var btn := Button.new()
+		btn.text = "%s — %s" % [choice["name"], choice["desc"]]
+		btn.custom_minimum_size = Vector2(420.0, 40.0)
+		btn.pressed.connect(_on_passive_chosen.bind(choice, world, overlay))
+		box.add_child(btn)
+	add_child(overlay)
+
+
+func _on_passive_chosen(choice: Dictionary, world: Dictionary, overlay: Control) -> void:
+	var passive: Dictionary = choice.duplicate()
+	passive["source"] = world["name"]
+	GameState.add_passive(passive)
+	GameState.refuel(5 if choice["id"] == "founding_bonus" else 0)
+	overlay.queue_free()
+	_refresh_status()
+	_world_desc_label.text = "You have founded [b]%s[/b] and gained [b]%s[/b]." % [
+		world["vessel_name"], passive["name"]]
 	SaveLoad.save_game()
 
 
