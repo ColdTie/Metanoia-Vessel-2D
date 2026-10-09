@@ -3,6 +3,18 @@ extends Node
 # Singleton: all mutable game state. Access via GameState.x anywhere.
 
 const MAX_PASSIVES := 10  # Reaching this triggers void unlock check
+const BASE_MAX_FUEL := 100
+const CHOICE_COUNT := 3
+
+# Draw pool for the settling reward. Roster of 6 so far; 4 more TBD before void.
+const PASSIVE_ROSTER: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "The act of founding grants clarity. +5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens."},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options."},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens."},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat."},
+]
 
 var current_world: String = "Ardent Shore"
 var passives: Array = []          # Array of {id, name, desc, source}
@@ -10,7 +22,8 @@ var ship_decorations: Array = []
 var specimens: Array = []         # Array of {id, world_id, name}
 var credits: int = 0
 var fuel: int = 100
-var max_fuel: int = 100
+var max_fuel: int = BASE_MAX_FUEL
+var pending_passive_choices: Array = []  # passive ids on offer after settling
 
 # World catalog — initialized in _ready(); mutated when worlds are settled.
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
@@ -111,8 +124,53 @@ func travel_to_world(world_id: String) -> bool:
 	return true
 
 
+func has_passive(id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == id:
+			return true
+	return false
+
+
+# Draws up to CHOICE_COUNT unowned passives and stores them as pending.
+func draw_passive_choices() -> Array:
+	var pool: Array = []
+	for p in PASSIVE_ROSTER:
+		if not has_passive(p["id"]):
+			pool.append(p["id"])
+	pool.shuffle()
+	pending_passive_choices = pool.slice(0, CHOICE_COUNT)
+	return pending_passive_choices
+
+
+func get_roster_entry(id: String) -> Dictionary:
+	for p in PASSIVE_ROSTER:
+		if p["id"] == id:
+			return p
+	return {}
+
+
+func choose_passive(id: String, source: String) -> bool:
+	if not pending_passive_choices.has(id):
+		return false
+	var entry := get_roster_entry(id)
+	if entry.is_empty():
+		return false
+	pending_passive_choices = []
+	add_passive({"id": id, "name": entry["name"], "desc": entry["desc"], "source": source})
+	return true
+
+
+# max_fuel is derived from passives so it survives save/load.
+func recalc_max_fuel() -> void:
+	max_fuel = BASE_MAX_FUEL + (5 if has_passive("founding_bonus") else 0)
+	fuel = min(fuel, max_fuel)
+
+
 func add_passive(passive: Dictionary) -> void:
 	passives.append(passive)
+	var old_max := max_fuel
+	recalc_max_fuel()
+	refuel(max_fuel - old_max)
 	passive_gained.emit(passive)
 	if passives.size() >= MAX_PASSIVES:
 		_trigger_void_check()

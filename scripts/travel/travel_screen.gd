@@ -20,6 +20,7 @@ var _world_name_label: Label
 var _world_desc_label: RichTextLabel
 var _depart_button: Button
 var _settle_button: Button
+var _choice_box: VBoxContainer
 
 var _selected_world_id: String = ""
 
@@ -38,6 +39,7 @@ func _ready() -> void:
 		SaveLoad.load_game()
 		_refresh_status()
 		_populate_destinations()
+		_show_passive_choices()
 
 
 func _process(delta: float) -> void:
@@ -193,6 +195,11 @@ func _build_right_panel(parent: Control) -> void:
 	_depart_button.pressed.connect(_on_depart_pressed)
 	btn_row.add_child(_depart_button)
 
+	_choice_box = VBoxContainer.new()
+	_choice_box.visible = false
+	_choice_box.add_theme_constant_override("separation", 6)
+	vbox.add_child(_choice_box)
+
 	_settle_button = Button.new()
 	_settle_button.text = "Found Vessel"
 	_settle_button.visible = false
@@ -290,27 +297,52 @@ func _on_settle_pressed() -> void:
 	world["settled"] = true
 	world["vessel_name"] = "Vessel of " + world["name"]
 
-	# Grant the founding passive (choose-1-of-3 UI is TODO)
-	GameState.add_passive({
-		"id": "founding_bonus",
-		"name": "Founding Bonus",
-		"desc": "The act of founding grants clarity. +5 max fuel.",
-		"source": world["name"],
-	})
-	GameState.max_fuel += 5
-	GameState.refuel(5)
+	# Offer 1-of-3 passives; the player picks one (see _show_passive_choices).
+	GameState.draw_passive_choices()
 
 	_settle_button.visible = false
 	_populate_destinations()
 	_refresh_status()
+	SaveLoad.save_game()
 
 	_world_desc_label.text = \
 		"You have founded [b]" + world["vessel_name"] + "[/b].\n\n" \
-		+ world.get("description", "") \
-		+ "\n\n[color=#aaffaa]A passive has been recorded. " \
-		+ "(Choose-1-of-3 selection coming in a future update.)[/color]"
+		+ world.get("description", "")
+	_show_passive_choices()
 
+
+# Shows buttons for pending passive choices; no-op when none are pending.
+func _show_passive_choices() -> void:
+	for child in _choice_box.get_children():
+		child.queue_free()
+	var ids: Array = GameState.pending_passive_choices
+	_choice_box.visible = not ids.is_empty()
+	if ids.is_empty():
+		return
+	var header := Label.new()
+	header.text = "Choose a passive:"
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_choice_box.add_child(header)
+	for id in ids:
+		var entry := GameState.get_roster_entry(id)
+		if entry.is_empty():
+			continue
+		var btn := Button.new()
+		btn.text = "%s — %s" % [entry["name"], entry["desc"]]
+		btn.custom_minimum_size = Vector2(0.0, 40.0)
+		var pid: String = id
+		btn.pressed.connect(func(): _on_passive_chosen(pid))
+		_choice_box.add_child(btn)
+
+
+func _on_passive_chosen(id: String) -> void:
+	if not GameState.choose_passive(id, GameState.current_world):
+		return
+	_show_passive_choices()
+	_refresh_status()
 	SaveLoad.save_game()
+	_world_desc_label.text += "\n\n[color=#aaffaa]Passive gained: " \
+		+ GameState.get_roster_entry(id).get("name", id) + "[/color]"
 
 
 func _on_world_changed(_new_world: String) -> void:
