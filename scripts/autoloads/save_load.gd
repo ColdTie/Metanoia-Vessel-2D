@@ -41,6 +41,7 @@ func load_game() -> bool:
 	GameState.specimens = data.get("specimens", [])
 	GameState.credits = data.get("credits", 0)
 	GameState.fuel = data.get("fuel", 100)
+	GameState.max_fuel = data.get("max_fuel", 100)
 	_restore_settled_worlds(data.get("settled_worlds", []))
 	return true
 

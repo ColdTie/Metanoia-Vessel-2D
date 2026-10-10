@@ -16,6 +16,16 @@ var max_fuel: int = 100
 # Each entry: {id, name, type, description, settled, vessel_name, distance, specimens}
 var world_catalog: Array = []
 
+# Passive roster (6 of 10 defined; see design/systems.md). Drawn 3 at a time on settling.
+const PASSIVE_ROSTER: Array = [
+	{"id": "founding_bonus", "name": "Founding Bonus", "desc": "+5 max fuel."},
+	{"id": "root_knowledge", "name": "Root Knowledge", "desc": "Jungle worlds yield extra specimens. (effect TODO)"},
+	{"id": "echo_listener", "name": "Echo Listener", "desc": "Unlocks extra creature dialogue options. (effect TODO)"},
+	{"id": "frost_hardened", "name": "Frost Hardened", "desc": "Ice-world travel costs 1 less fuel."},
+	{"id": "tide_reader", "name": "Tide Reader", "desc": "Ocean worlds reveal hidden specimens. (effect TODO)"},
+	{"id": "dust_walker", "name": "Dust Walker", "desc": "Desert worlds never trigger forced combat. (effect TODO)"},
+]
+
 signal world_changed(new_world: String)
 signal passive_gained(passive: Dictionary)
 signal credits_changed(amount: int)
@@ -98,11 +108,51 @@ func get_current_world_data() -> Dictionary:
 	return get_world_by_name(current_world)
 
 
+# Fuel cost to reach a world, after passive modifiers.
+func get_travel_cost(world: Dictionary) -> int:
+	var cost: int = world.get("distance", 0)
+	if cost > 0 and world.get("type", "") == "ice" and has_passive("frost_hardened"):
+		cost -= 1
+	return cost
+
+
+func has_passive(passive_id: String) -> bool:
+	for p in passives:
+		if p.get("id", "") == passive_id:
+			return true
+	return false
+
+
+# Up to `count` random roster passives the player doesn't own yet.
+func draw_passive_choices(count: int = 3) -> Array:
+	var pool: Array = []
+	for p in PASSIVE_ROSTER:
+		if not has_passive(p["id"]):
+			pool.append(p)
+	pool.shuffle()
+	return pool.slice(0, count)
+
+
+# Add a chosen roster passive and apply its immediate effect.
+func grant_passive(passive: Dictionary, source: String) -> void:
+	if has_passive(passive["id"]):
+		return
+	if passive["id"] == "founding_bonus":
+		max_fuel += 5
+		refuel(5)
+	add_passive({
+		"id": passive["id"],
+		"name": passive["name"],
+		"desc": passive["desc"],
+		"source": source,
+	})
+
+
 func travel_to_world(world_id: String) -> bool:
 	var world := get_world_by_id(world_id)
 	if world.is_empty():
 		return false
-	var cost: int = world.get("distance", 0)
+	var cost := get_travel_cost(world)
 	if fuel < cost:
 		return false
 	fuel -= cost
